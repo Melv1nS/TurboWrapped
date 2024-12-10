@@ -2,6 +2,10 @@ import { getServerSession } from "next-auth";
 import { OPTIONS } from "../auth/[...nextauth]/route";
 import { NextResponse } from "next/server";
 
+interface Artist {
+    genres: string[];
+}
+
 export async function GET(request: Request) {
     const session = await getServerSession(OPTIONS);
     
@@ -31,7 +35,7 @@ export async function GET(request: Request) {
     }
 
     const response = await fetch(
-        `https://api.spotify.com/v1/me/top/tracks?limit=20&time_range=${timeRange}`,
+        `https://api.spotify.com/v1/me/top/artists?limit=50&time_range=${timeRange}`,
         {
             headers: {
                 Authorization: `Bearer ${session.accessToken}`,
@@ -41,11 +45,26 @@ export async function GET(request: Request) {
 
     if (!response.ok) {
         return NextResponse.json(
-            { error: "Failed to fetch top tracks" },
+            { error: "Failed to fetch top artists" },
             { status: response.status }
         );
     }
 
     const data = await response.json();
-    return NextResponse.json(data);
+    
+    // Count genre occurrences
+    const genreCounts: { [key: string]: number } = {};
+    data.items.forEach((artist: Artist) => {
+        artist.genres.forEach(genre => {
+            genreCounts[genre] = (genreCounts[genre] || 0) + 1;
+        });
+    });
+
+    // Convert to array and sort by count
+    const sortedGenres = Object.entries(genreCounts)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 100); // Get top 10 genres
+
+    return NextResponse.json(sortedGenres);
 }

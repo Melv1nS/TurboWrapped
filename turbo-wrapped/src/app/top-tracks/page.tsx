@@ -17,8 +17,21 @@ interface Track {
             height: number;
             width: number;
         }>;
+        release_date: string;
     };
     duration_ms: number;
+}
+
+interface AlbumCount {
+    [key: string]: number;
+}
+
+interface ArtistCount {
+    [key: string]: number;
+}
+
+interface YearCount {
+    [key: string]: number;
 }
 
 export default function TopTracks() {
@@ -26,17 +39,54 @@ export default function TopTracks() {
     const [tracks, setTracks] = useState<Track[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [timeRange, setTimeRange] = useState('medium_term');
+    const [albumDistribution, setAlbumDistribution] = useState<AlbumCount>({});
+    const [artistFrequency, setArtistFrequency] = useState<ArtistCount>({});
+    const [yearDistribution, setYearDistribution] = useState<YearCount>({});
+    const [totalDuration, setTotalDuration] = useState(0);
 
     useEffect(() => {
         async function fetchTopTracks() {
             if (session) {
                 try {
-                    const response = await fetch('/api/tracks');
+                    const response = await fetch(`/api/tracks?time_range=${timeRange}`);
+                    
                     if (!response.ok) {
-                        throw new Error('Failed to fetch top tracks');
+                        throw new Error('Failed to fetch data');
                     }
-                    const data = await response.json();
-                    setTracks(data.items);
+
+                    const tracksData = await response.json();
+                    setTracks(tracksData.items);
+                    
+                    // Calculate distributions
+                    const albumCounts: AlbumCount = {};
+                    const artistCounts: ArtistCount = {};
+                    const yearCounts: YearCount = {};
+                    let duration = 0;
+
+                    tracksData.items.forEach((track: Track) => {
+                        // Album distribution
+                        const albumKey = track.album.name;
+                        albumCounts[albumKey] = (albumCounts[albumKey] || 0) + 1;
+
+                        // Artist frequency
+                        track.artists.forEach(artist => {
+                            artistCounts[artist.name] = (artistCounts[artist.name] || 0) + 1;
+                        });
+
+                        // Year distribution
+                        const year = track.album.release_date.substring(0, 4);
+                        yearCounts[year] = (yearCounts[year] || 0) + 1;
+
+                        // Total duration
+                        duration += track.duration_ms;
+                    });
+
+                    setAlbumDistribution(albumCounts);
+                    setArtistFrequency(artistCounts);
+                    setYearDistribution(yearCounts);
+                    setTotalDuration(duration);
+
                 } catch (err) {
                     setError(err instanceof Error ? err.message : 'An error occurred');
                 } finally {
@@ -46,7 +96,14 @@ export default function TopTracks() {
         }
 
         fetchTopTracks();
-    }, [session]);
+    }, [session, timeRange]);
+
+    // Format total duration
+    const formatTotalDuration = (ms: number) => {
+        const hours = Math.floor(ms / 3600000);
+        const minutes = Math.floor((ms % 3600000) / 60000);
+        return `${hours}h ${minutes}m`;
+    };
 
     if (!session) {
         return null;
@@ -68,7 +125,86 @@ export default function TopTracks() {
 
     return (
         <div className="p-6">
-            <h2 className="text-2xl font-bold mb-6">Your Top Tracks</h2>
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold">Your Top Tracks</h2>
+                <select 
+                    value={timeRange}
+                    onChange={(e) => setTimeRange(e.target.value)}
+                    className="bg-opacity-10 bg-white rounded-md p-2 text-sm"
+                >
+                    <option value="short_term">Last 4 Weeks</option>
+                    <option value="medium_term">Last 6 Months</option>
+                    <option value="long_term">All Time</option>
+                </select>
+            </div>
+            <div className="mb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="bg-opacity-10 bg-white p-4 rounded-lg">
+                    <h3 className="text-xl font-semibold mb-3">Top Artists</h3>
+                    <div className="space-y-2">
+                        {Object.entries(artistFrequency)
+                            .sort(([,a], [,b]) => b - a)
+                            .slice(0, 5)
+                            .map(([artist, count]) => (
+                                <div key={artist} className="flex justify-between items-center">
+                                    <span className="truncate">{artist}</span>
+                                    <span className="text-sm opacity-70">{count} tracks</span>
+                                </div>
+                            ))}
+                    </div>
+                </div>
+
+                <div className="bg-opacity-10 bg-white p-4 rounded-lg">
+                    <h3 className="text-xl font-semibold mb-3">Top Albums</h3>
+                    <div className="space-y-2">
+                        {Object.entries(albumDistribution)
+                            .sort(([,a], [,b]) => b - a)
+                            .slice(0, 5)
+                            .map(([album, count]) => (
+                                <div key={album} className="flex justify-between items-center">
+                                    <span className="truncate">{album}</span>
+                                    <span className="text-sm opacity-70">{count} tracks</span>
+                                </div>
+                            ))}
+                    </div>
+                </div>
+
+                <div className="bg-opacity-10 bg-white p-4 rounded-lg">
+                    <h3 className="text-xl font-semibold mb-3">Release Years</h3>
+                    <div className="space-y-2">
+                        {Object.entries(yearDistribution)
+                            .sort(([a], [b]) => Number(b) - Number(a))
+                            .slice(0, 5)
+                            .map(([year, count]) => (
+                                <div key={year} className="flex justify-between items-center">
+                                    <span>{year}</span>
+                                    <span className="text-sm opacity-70">{count} tracks</span>
+                                </div>
+                            ))}
+                    </div>
+                </div>
+
+                <div className="bg-opacity-10 bg-white p-4 rounded-lg">
+                    <h3 className="text-xl font-semibold mb-3">Playlist Stats</h3>
+                    <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                            <span>Total Duration</span>
+                            <span className="text-sm opacity-70">{formatTotalDuration(totalDuration)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span>Total Tracks</span>
+                            <span className="text-sm opacity-70">{tracks.length}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span>Unique Artists</span>
+                            <span className="text-sm opacity-70">{Object.keys(artistFrequency).length}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span>Unique Albums</span>
+                            <span className="text-sm opacity-70">{Object.keys(albumDistribution).length}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div className="space-y-4">
                 {tracks.map((track, index) => (
                     <div 

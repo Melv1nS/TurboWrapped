@@ -37,6 +37,12 @@ export default function Home() {
             >
               Top Tracks
             </button>
+            <button 
+              onClick={() => router.push('/top-genres')}
+              className='px-4 py-2 rounded-lg bg-white text-black hover:bg-opacity-90'
+            >
+              Top Genres
+            </button>
           </div>
 
           <p className='opacity-70 mt-8 mb-5 underline cursor-pointer' onClick={() => signOut()}>Sign Out</p>
