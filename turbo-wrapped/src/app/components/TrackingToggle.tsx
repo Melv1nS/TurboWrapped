@@ -5,18 +5,21 @@ import { useSession } from 'next-auth/react';
 export default function TrackingToggle() {
     const { data: session } = useSession();
     const [isTracking, setIsTracking] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
+    // Fetch initial tracking state when component mounts
     useEffect(() => {
-        // Fetch initial tracking status
         const fetchTrackingStatus = async () => {
             try {
-                const response = await fetch('/api/user/tracking-preferences');
+                const response = await fetch('/api/tracking-preferences');
                 if (response.ok) {
                     const data = await response.json();
                     setIsTracking(data.trackingEnabled);
                 }
             } catch (error) {
                 console.error('Failed to fetch tracking status:', error);
+            } finally {
+                setIsLoading(false);
             }
         };
 
@@ -40,6 +43,14 @@ export default function TrackingToggle() {
             console.error('Failed to update tracking preferences:', error);
         }
     };
+
+    if (isLoading) {
+        return (
+            <div className="mt-4 bg-spotify-dark-grey p-4 rounded-lg">
+                Loading preferences...
+            </div>
+        );
+    }
 
     return (
         <div className="mt-4 bg-spotify-dark-grey p-4 rounded-lg">
