@@ -9,7 +9,6 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check for refresh token error
     if (session.error === 'RefreshAccessTokenError') {
         return NextResponse.json(
             { error: "Your session has expired. Please sign in again." },
@@ -28,22 +27,56 @@ export async function GET(request: Request) {
         );
     }
 
-    const response = await fetch(
-        `https://api.spotify.com/v1/me/top/artists?limit=20&time_range=${timeRange}`,
-        {
-            headers: {
-                Authorization: `Bearer ${session.accessToken}`,
-            },
-        }
-    );
+    try {
+        const spotifyResponse = await fetch(
+            `https://api.spotify.com/v1/me/top/artists?limit=20&time_range=${timeRange}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${session.accessToken}`,
+                },
+                next: {
+                    revalidate: 3600 // Cache for 1 hour
+                }
+            }
+        );
 
-    if (!response.ok) {
+        if (!spotifyResponse.ok) {
+            throw new Error(`Spotify API error: ${spotifyResponse.statusText}`);
+        }
+
+        const data = await spotifyResponse.json();
+
+        // Filter and transform the response data
+        const filteredData = {
+            items: data.items.map((artist: any) => ({
+                id: artist.id,
+                name: artist.name,
+                images: [artist.images[0]], // Only include the largest image
+                genres: artist.genres,
+                followers: {
+                    total: artist.followers.total
+                },
+                popularity: artist.popularity,
+                external_urls: {
+                    spotify: artist.external_urls.spotify
+                }
+            }))
+        };
+
+        // Create response with cache headers
+        const apiResponse = NextResponse.json(filteredData);
+        
+        // Set cache control headers
+        apiResponse.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=7200');
+        apiResponse.headers.set('Vary', 'Cookie, Authorization');
+
+        return apiResponse;
+
+    } catch (error) {
+        console.error('Error fetching artists:', error);
         return NextResponse.json(
             { error: "Failed to fetch top artists" },
-            { status: response.status }
+            { status: 500 }
         );
     }
-
-    const data = await response.json();
-    return NextResponse.json(data);
 }

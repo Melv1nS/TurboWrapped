@@ -1,7 +1,8 @@
 'use client'
 import { useSession } from 'next-auth/react';
-import { useEffect, useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import useSWR from 'swr';
 
 interface Genre {
   name: string;
@@ -9,34 +10,25 @@ interface Genre {
   cluster?: number;
 }
 
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Failed to fetch data');
+  return res.json();
+};
+
 export default function TopGenres() {
   const { data: session } = useSession();
-  const [genres, setGenres] = useState<Genre[]>([]);
   const [timeRange, setTimeRange] = useState('medium_term');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function fetchTopGenres() {
-      if (session) {
-        try {
-          setLoading(true);
-          const response = await fetch(`/api/genres?time_range=${timeRange}`);
-          if (!response.ok) {
-            throw new Error('Failed to fetch top genres');
-          }
-          const data = await response.json();
-          setGenres(data);
-        } catch (err) {
-          setError(err instanceof Error ? err.message : 'An error occurred');
-        } finally {
-          setLoading(false);
-        }
-      }
+  const { data: genres = [], error } = useSWR<Genre[]>(
+    session ? `/api/genres?time_range=${timeRange}` : null,
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 300000, // 5 minutes
     }
-
-    fetchTopGenres();
-  }, [session, timeRange]);
+  );
 
   const TagCloud = () => {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -247,8 +239,26 @@ export default function TopGenres() {
   };
 
   if (!session) return null;
-  if (loading) return <div>Loading your top genres...</div>;
-  if (error) return <div className="text-red-500">{error}</div>;
+  
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="text-center text-red-500 p-4">
+          {error.message || 'Failed to load genres'}
+        </div>
+      </div>
+    );
+  }
+
+  if (!genres.length) {
+    return (
+      <div className="p-6">
+        <div className="text-center p-4">
+          Loading your top genres...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">

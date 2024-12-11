@@ -1,7 +1,8 @@
 'use client'
 import { useSession } from 'next-auth/react';
-import { useEffect, useState } from 'react';
+import { useState, useMemo } from 'react';
 import Image from 'next/image';
+import useSWR from 'swr';
 
 interface Track {
     id: string;
@@ -34,88 +35,88 @@ interface YearCount {
     [key: string]: number;
 }
 
+const fetcher = async (url: string) => {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Failed to fetch data');
+    return res.json();
+};
+
 export default function TopTracks() {
     const { data: session } = useSession();
-    const [tracks, setTracks] = useState<Track[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [timeRange, setTimeRange] = useState('medium_term');
-    const [albumDistribution, setAlbumDistribution] = useState<AlbumCount>({});
-    const [artistFrequency, setArtistFrequency] = useState<ArtistCount>({});
-    const [yearDistribution, setYearDistribution] = useState<YearCount>({});
-    const [totalDuration, setTotalDuration] = useState(0);
 
-    useEffect(() => {
-        async function fetchTopTracks() {
-            if (session) {
-                try {
-                    const response = await fetch(`/api/tracks?time_range=${timeRange}`);
-                    
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch data');
-                    }
-
-                    const tracksData = await response.json();
-                    setTracks(tracksData.items);
-                    
-                    // Calculate distributions
-                    const albumCounts: AlbumCount = {};
-                    const artistCounts: ArtistCount = {};
-                    const yearCounts: YearCount = {};
-                    let duration = 0;
-
-                    tracksData.items.forEach((track: Track) => {
-                        // Album distribution
-                        const albumKey = track.album.name;
-                        albumCounts[albumKey] = (albumCounts[albumKey] || 0) + 1;
-
-                        // Artist frequency
-                        track.artists.forEach(artist => {
-                            artistCounts[artist.name] = (artistCounts[artist.name] || 0) + 1;
-                        });
-
-                        // Year distribution
-                        const year = track.album.release_date.substring(0, 4);
-                        yearCounts[year] = (yearCounts[year] || 0) + 1;
-
-                        // Total duration
-                        duration += track.duration_ms;
-                    });
-
-                    setAlbumDistribution(albumCounts);
-                    setArtistFrequency(artistCounts);
-                    setYearDistribution(yearCounts);
-                    setTotalDuration(duration);
-
-                } catch (err) {
-                    setError(err instanceof Error ? err.message : 'An error occurred');
-                } finally {
-                    setLoading(false);
-                }
-            }
+    const { data, error } = useSWR<{ items: Track[] }>(
+        session ? `/api/tracks?time_range=${timeRange}` : null,
+        fetcher,
+        {
+            revalidateOnFocus: false,
+            revalidateOnReconnect: false,
+            dedupingInterval: 300000, // 5 minutes
         }
+    );
 
-        fetchTopTracks();
-    }, [session, timeRange]);
+    const tracks = data?.items ?? [];
 
-    // Format total duration
+    const stats = useMemo(() => {
+        if (!tracks.length) return null;
+
+        const years = tracks.map(track => new Date(track.album.release_date).getFullYear());
+        const totalDuration = tracks.reduce((sum, track) => sum + track.duration_ms, 0);
+        const uniqueArtists = new Set(tracks.flatMap(track => track.artists.map(artist => artist.id))).size;
+        const uniqueAlbums = new Set(tracks.map(track => track.album.name)).size;
+        
+        return {
+            averageDuration: Math.round(totalDuration / tracks.length / 1000), // in seconds
+            totalDuration: totalDuration,
+            averageReleaseYear: Math.round(years.reduce((sum, year) => sum + year, 0) / years.length),
+            yearRange: {
+                oldest: Math.min(...years),
+                newest: Math.max(...years)
+            },
+            averageArtistsPerTrack: Number((tracks.reduce((sum, track) => sum + track.artists.length, 0) / tracks.length).toFixed(2)),
+            uniqueArtistsCount: uniqueArtists,
+            uniqueAlbumsCount: uniqueAlbums
+        };
+    }, [tracks]);
+
+    const {
+        albumDistribution,
+        artistFrequency,
+        yearDistribution,
+        totalDuration
+    } = useMemo(() => {
+        const albumCounts: AlbumCount = {};
+        const artistCounts: ArtistCount = {};
+        const yearCounts: YearCount = {};
+        let duration = 0;
+
+        tracks.forEach((track: Track) => {
+            const albumKey = track.album.name;
+            albumCounts[albumKey] = (albumCounts[albumKey] || 0) + 1;
+
+            track.artists.forEach(artist => {
+                artistCounts[artist.name] = (artistCounts[artist.name] || 0) + 1;
+            });
+
+            const year = track.album.release_date.substring(0, 4);
+            yearCounts[year] = (yearCounts[year] || 0) + 1;
+
+            duration += track.duration_ms;
+        });
+
+        return {
+            albumDistribution: albumCounts,
+            artistFrequency: artistCounts,
+            yearDistribution: yearCounts,
+            totalDuration: duration
+        };
+    }, [tracks]);
+
     const formatTotalDuration = (ms: number) => {
         const hours = Math.floor(ms / 3600000);
         const minutes = Math.floor((ms % 3600000) / 60000);
         return `${hours}h ${minutes}m`;
     };
-
-    if (!session) {
-        return null;
-    }
-
-    if (loading) {
-        return <div className="text-center p-4">Loading your top tracks...</div>;
-    }
-
-    if (error) {
-        return <div className="text-center text-red-500 p-4">{error}</div>;
-    }
 
     const formatDuration = (ms: number) => {
         const minutes = Math.floor(ms / 60000);
@@ -123,82 +124,17 @@ export default function TopTracks() {
         return `${minutes}:${seconds.toString().padStart(2, '0')}`;
     };
 
-    // Add these utility functions
-    const calculateTrackStats = (tracks: Track[]) => {
-        const stats = {
-            // Time-based stats
-            averageDuration: Math.round(tracks.reduce((sum, track) => sum + track.duration_ms, 0) / tracks.length / 1000), // in seconds
-            totalDuration: tracks.reduce((sum, track) => sum + track.duration_ms, 0), // in ms
-            
-            // Release date analysis
-            averageReleaseYear: calculateAverageYear(tracks),
-            yearRange: calculateYearRange(tracks),
-            decadeDistribution: calculateDecadeDistribution(tracks),
-            
-            // Artist analysis
-            uniqueArtistsCount: countUniqueArtists(tracks),
-            artistAppearances: calculateArtistAppearances(tracks),
-            averageArtistsPerTrack: Number((tracks.reduce((sum, track) => sum + track.artists.length, 0) / tracks.length).toFixed(2)),
-            
-            // Album analysis
-            uniqueAlbumsCount: new Set(tracks.map(track => track.album.name)).size,
-            albumAppearances: calculateAlbumAppearances(tracks),
-        };
+    if (!session) {
+        return null;
+    }
 
-        return stats;
-    };
+    if (!data) {
+        return <div className="text-center p-4">Loading your top tracks...</div>;
+    }
 
-    const calculateAverageYear = (tracks: Track[]) => {
-        return Math.round(
-            tracks.reduce((sum, track) => sum + new Date(track.album.release_date).getFullYear(), 0) / tracks.length
-        );
-    };
-
-    const calculateYearRange = (tracks: Track[]) => {
-        const years = tracks.map(track => new Date(track.album.release_date).getFullYear());
-        return {
-            oldest: Math.min(...years),
-            newest: Math.max(...years),
-        };
-    };
-
-    const calculateDecadeDistribution = (tracks: Track[]) => {
-        const decades: { [key: string]: number } = {};
-        tracks.forEach(track => {
-            const year = new Date(track.album.release_date).getFullYear();
-            const decade = Math.floor(year / 10) * 10;
-            decades[`${decade}s`] = (decades[`${decade}s`] || 0) + 1;
-        });
-        return decades;
-    };
-
-    const countUniqueArtists = (tracks: Track[]) => {
-        return new Set(tracks.flatMap(track => track.artists.map(artist => artist.id))).size;
-    };
-
-    const calculateArtistAppearances = (tracks: Track[]) => {
-        const appearances: { [key: string]: number } = {};
-        tracks.forEach(track => {
-            track.artists.forEach(artist => {
-                appearances[artist.name] = (appearances[artist.name] || 0) + 1;
-            });
-        });
-        return Object.entries(appearances)
-            .sort(([,a], [,b]) => b - a)
-            .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
-    };
-
-    const calculateAlbumAppearances = (tracks: Track[]) => {
-        const appearances: { [key: string]: number } = {};
-        tracks.forEach(track => {
-            appearances[track.album.name] = (appearances[track.album.name] || 0) + 1;
-        });
-        return Object.entries(appearances)
-            .sort(([,a], [,b]) => b - a)
-            .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
-    };
-
-    const stats = calculateTrackStats(tracks);
+    if (error) {
+        return <div className="text-center text-red-500 p-4">{error.message}</div>;
+    }
 
     return (
         <div className="p-6 bg-spotify-black min-h-screen">

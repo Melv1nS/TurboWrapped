@@ -1,7 +1,8 @@
 'use client'
 import { useSession } from 'next-auth/react';
-import { useEffect, useState } from 'react';
+import { useState, useMemo } from 'react';
 import Image from 'next/image';
+import useSWR from 'swr';
 
 interface Artist {
     id: string;
@@ -21,65 +22,66 @@ interface Artist {
     };
 }
 
-const calculateAveragePopularity = (artists: Artist[]) => {
-    return Math.round(artists.reduce((sum, artist) => sum + artist.popularity, 0) / artists.length);
-};
-
-const calculateAverageFollowers = (artists: Artist[]) => {
-    return Math.round(artists.reduce((sum, artist) => sum + artist.followers.total, 0) / artists.length);
-};
-
-const getMostCommonGenres = (artists: Artist[], limit = 5) => {
-    const genreCounts = artists.flatMap(artist => artist.genres)
-        .reduce((acc, genre) => {
-            acc[genre] = (acc[genre] || 0) + 1;
-            return acc;
-        }, {} as Record<string, number>);
-    
-    return Object.entries(genreCounts)
-        .sort(([,a], [,b]) => b - a)
-        .slice(0, limit)
-        .map(([genre]) => genre);
+const fetcher = async (url: string) => {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Failed to fetch data');
+    return res.json();
 };
 
 export default function TopArtists() {
     const { data: session } = useSession();
-    const [artists, setArtists] = useState<Artist[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [timeRange, setTimeRange] = useState('medium_term');
 
-    useEffect(() => {
-        async function fetchTopArtists() {
-            if (session) {
-                try {
-                    const response = await fetch(`/api/artists?time_range=${timeRange}`);
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch top artists');
-                    }
-                    const data = await response.json();
-                    setArtists(data.items);
-                } catch (err) {
-                    setError(err instanceof Error ? err.message : 'An error occurred');
-                } finally {
-                    setLoading(false);
-                }
-            }
+    const { data, error } = useSWR<{ items: Artist[] }>(
+        session ? `/api/artists?time_range=${timeRange}` : null,
+        fetcher,
+        {
+            revalidateOnFocus: false,
+            revalidateOnReconnect: false,
+            dedupingInterval: 300000, // 5 minutes
         }
+    );
 
-        fetchTopArtists();
-    }, [session, timeRange]);
+    const artists = data?.items ?? [];
+
+    // Memoized calculations
+    const stats = useMemo(() => {
+        if (!artists.length) return null;
+
+        return {
+            averagePopularity: Math.round(
+                artists.reduce((sum, artist) => sum + artist.popularity, 0) / artists.length
+            ),
+            averageFollowers: Math.round(
+                artists.reduce((sum, artist) => sum + artist.followers.total, 0) / artists.length
+            ),
+            topGenres: artists
+                .flatMap(artist => artist.genres)
+                .reduce((acc, genre) => {
+                    acc[genre] = (acc[genre] || 0) + 1;
+                    return acc;
+                }, {} as Record<string, number>)
+        };
+    }, [artists]);
+
+    const topGenres = useMemo(() => {
+        if (!stats) return [];
+        return Object.entries(stats.topGenres)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 3)
+            .map(([genre]) => genre);
+    }, [stats]);
 
     if (!session) {
         return null;
     }
 
-    if (loading) {
+    if (!data) {
         return <div className="text-center p-4">Loading your top artists...</div>;
     }
 
     if (error) {
-        return <div className="text-center text-red-500 p-4">{error}</div>;
+        return <div className="text-center text-red-500 p-4">{error.message}</div>;
     }
 
     return (
@@ -96,27 +98,29 @@ export default function TopArtists() {
                     <option value="long_term">All Time</option>
                 </select>
             </div>
-            <div className="mb-8 bg-opacity-10 bg-white rounded-lg p-4">
-                <h3 className="text-xl font-semibold mb-3">Your Music Taste in Numbers</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="text-center">
-                        <p className="text-sm opacity-70">Average Artist Popularity</p>
-                        <p className="text-2xl font-bold text-green-500">{calculateAveragePopularity(artists)}%</p>
-                    </div>
-                    <div className="text-center">
-                        <p className="text-sm opacity-70">Average Followers</p>
-                        <p className="text-2xl font-bold text-green-500">
-                            {new Intl.NumberFormat().format(calculateAverageFollowers(artists))}
-                        </p>
-                    </div>
-                    <div className="text-center">
-                        <p className="text-sm opacity-70">Top Genres</p>
-                        <p className="text-sm font-medium text-green-500">
-                            {getMostCommonGenres(artists, 3).join(', ')}
-                        </p>
+            {stats && (
+                <div className="mb-8 bg-opacity-10 bg-white rounded-lg p-4">
+                    <h3 className="text-xl font-semibold mb-3">Your Music Taste in Numbers</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="text-center">
+                            <p className="text-sm opacity-70">Average Artist Popularity</p>
+                            <p className="text-2xl font-bold text-green-500">{stats.averagePopularity}%</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-sm opacity-70">Average Followers</p>
+                            <p className="text-2xl font-bold text-green-500">
+                                {new Intl.NumberFormat().format(stats.averageFollowers)}
+                            </p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-sm opacity-70">Top Genres</p>
+                            <p className="text-sm font-medium text-green-500">
+                                {topGenres.join(', ')}
+                            </p>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 {artists.map((artist, index) => (
                     <div 
@@ -130,6 +134,7 @@ export default function TopArtists() {
                                 width={160}
                                 height={160}
                                 className="rounded-full mb-3"
+                                priority={index < 5} // Prioritize loading first 5 images
                             />
                             <div className="absolute -top-2 -left-2 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
                                 <span className="font-bold text-sm">#{index + 1}</span>
@@ -137,7 +142,6 @@ export default function TopArtists() {
                         </div>
                         <h3 className="text-lg font-semibold text-center">{artist.name}</h3>
                         
-                        {/* Popularity Bar */}
                         <div className="w-full mt-2 mb-1">
                             <div className="text-xs mb-1">Popularity: {artist.popularity}%</div>
                             <div className="w-full bg-gray-700 h-2 rounded-full">
@@ -148,12 +152,10 @@ export default function TopArtists() {
                             </div>
                         </div>
 
-                        {/* Followers */}
                         <p className="text-sm opacity-70">
                             {new Intl.NumberFormat().format(artist.followers.total)} followers
                         </p>
 
-                        {/* Genres with expand/collapse */}
                         <details className="mt-2 text-center">
                             <summary className="text-sm opacity-70 cursor-pointer">
                                 {artist.genres.slice(0, 2).join(', ')}
@@ -164,7 +166,6 @@ export default function TopArtists() {
                             </p>
                         </details>
 
-                        {/* Spotify Link */}
                         <a 
                             href={artist.external_urls.spotify}
                             target="_blank"
