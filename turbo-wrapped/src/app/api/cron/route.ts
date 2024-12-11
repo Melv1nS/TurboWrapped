@@ -56,6 +56,24 @@ export async function GET(request: Request) {
                 const data = await response.json();
                 
                 for (const item of data.items) {
+                    // Fetch album details to get genres
+                    const albumId = item.track.album.id;
+                    const albumResponse = await fetch(
+                        `https://api.spotify.com/v1/albums/${albumId}`,
+                        {
+                            headers: {
+                                Authorization: `Bearer ${spotifyAccount.access_token}`,
+                            },
+                        }
+                    );
+
+                    if (!albumResponse.ok) {
+                        console.warn(`Failed to fetch album details for ${albumId}`);
+                    }
+
+                    const albumData = await albumResponse.json();
+                    const genres = albumResponse.ok ? albumData.genres : [];
+
                     await prisma.listeningHistory.upsert({
                         where: {
                             userId_trackId_playedAt: {
@@ -64,14 +82,16 @@ export async function GET(request: Request) {
                                 playedAt: new Date(item.played_at)
                             }
                         },
-                        update: {}, // No updates if exists
+                        update: {
+                            genres: genres // Update genres even if record exists
+                        },
                         create: {
                             userId: user.id,
                             trackId: item.track.id,
                             trackName: item.track.name,
                             artistName: item.track.artists[0].name,
                             albumName: item.track.album.name,
-                            genres: [], // We'll add genres later if needed
+                            genres: genres,
                             playedAt: new Date(item.played_at),
                             duration: item.track.duration_ms,
                         }
