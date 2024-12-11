@@ -1,72 +1,31 @@
 'use client'
-import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useTrackingState } from '../hooks/useTrackingState';
 
 export default function TrackingToggle() {
-    const { data: session } = useSession();
-    const [isTracking, setIsTracking] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
+  const { isEnabled, toggleTracking } = useTrackingState();
+  
+  console.log('TrackingToggle isEnabled:', isEnabled);
 
-    // Fetch initial tracking state when component mounts
-    useEffect(() => {
-        const fetchTrackingStatus = async () => {
-            try {
-                const response = await fetch('/api/tracking-preferences');
-                if (response.ok) {
-                    const data = await response.json();
-                    setIsTracking(data.trackingEnabled);
-                }
-            } catch (error) {
-                console.error('Failed to fetch tracking status:', error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        if (session) {
-            fetchTrackingStatus();
-        }
-    }, [session]);
-
-    const toggleTracking = async () => {
-        try {
-            const response = await fetch('/api/tracking-preferences', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ enabled: !isTracking }),
-            });
-
-            if (response.ok) {
-                setIsTracking(!isTracking);
-            }
-        } catch (error) {
-            console.error('Failed to update tracking preferences:', error);
-        }
-    };
-
-    if (isLoading) {
-        return (
-            <div className="mt-4 bg-spotify-dark-grey p-4 rounded-lg">
-                Loading preferences...
-            </div>
-        );
-    }
-
-    return (
-        <div className="mt-4 bg-spotify-dark-grey p-4 rounded-lg">
-            <h3 className="font-semibold mb-2">Listening History Tracking</h3>
-            <p className="text-sm text-spotify-grey mb-4">
-                Enable to track your Spotify listening history every 4 hours
-            </p>
-            <label className="flex items-center space-x-2">
-                <input
-                    type="checkbox"
-                    checked={isTracking}
-                    onChange={toggleTracking}
-                    className="form-checkbox"
-                />
-                <span>Enable tracking</span>
-            </label>
+  return (
+    <div className="bg-spotify-dark-elevated p-6 rounded-xl">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-white font-bold mb-1">Listening History</h3>
+          <p className="text-sm text-gray-300">
+            {isEnabled ? 'Currently tracking' : 'Tracking disabled'}
+          </p>
         </div>
-    );
+        <button
+          onClick={toggleTracking}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors
+                     ${isEnabled ? 'bg-spotify-green' : 'bg-gray-600'}`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+                       ${isEnabled ? 'translate-x-6' : 'translate-x-1'}`}
+          />
+        </button>
+      </div>
+    </div>
+  );
 }

@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react';
 import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import useSWR from 'swr';
+import BackButton from '../components/BackButton';
 
 interface Track {
     id: string;
@@ -139,6 +140,7 @@ export default function TopTracks() {
     return (
         <div className="p-6 bg-spotify-black min-h-screen">
             <div className="flex justify-between items-center mb-6">
+                <BackButton />
                 <h2 className="text-2xl font-bold text-spotify-white">Your Top Tracks</h2>
                 <select 
                     value={timeRange}
@@ -197,6 +199,7 @@ export default function TopTracks() {
                 </div>
 
                 <div className="bg-spotify-dark-grey p-4 rounded-lg">
+                    
                     <h3 className="text-xl font-semibold mb-3 text-spotify-white">Playlist Stats</h3>
                     <div className="space-y-2">
                         <div className="flex justify-between items-center">

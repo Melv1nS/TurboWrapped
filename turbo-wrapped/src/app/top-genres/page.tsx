@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react';
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import useSWR from 'swr';
+import BackButton from '../components/BackButton';
 
 interface Genre {
   name: string;
@@ -263,6 +264,7 @@ export default function TopGenres() {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
+        <BackButton />
         <h2 className="text-2xl font-bold">Your Top Genres</h2>
         <select 
           value={timeRange}

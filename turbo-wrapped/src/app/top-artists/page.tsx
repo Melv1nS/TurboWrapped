@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react';
 import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import useSWR from 'swr';
+import BackButton from '../components/BackButton';
 
 interface Artist {
     id: string;
@@ -87,6 +88,7 @@ export default function TopArtists() {
     return (
         <div className="p-6">
             <div className="flex justify-between items-center mb-6">
+                <BackButton />
                 <h2 className="text-2xl font-bold">Your Top Artists</h2>
                 <select 
                     value={timeRange}
