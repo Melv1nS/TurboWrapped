@@ -8,7 +8,6 @@ const prismaClientSingleton = () => {
         url: process.env.DATABASE_URL
       },
     },
-    previewFeatures: ['metrics'],
     connection: {
       keepAlive: false,
       maxUses: 1,
