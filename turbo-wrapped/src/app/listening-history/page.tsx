@@ -25,6 +25,10 @@ interface Stats {
     };
 }
 
+interface TrackingPreferences {
+    isEnabled: boolean;
+}
+
 const fetcher = async (url: string) => {
     const res = await fetch(url);
     if (!res.ok) throw new Error('Failed to fetch data');
@@ -38,6 +42,11 @@ export default function ListeningHistory() {
         startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         endDate: new Date().toISOString().split('T')[0]
     });
+
+    const { data: trackingPrefs } = useSWR<TrackingPreferences>(
+        session ? '/api/user/tracking-preferences' : null,
+        fetcher
+    );
 
     const { data, error, isLoading } = useSWR(
         session ? 
@@ -57,6 +66,17 @@ export default function ListeningHistory() {
     };
 
     if (!session) return null;
+    if (!trackingPrefs?.isEnabled) {
+        return (
+            <div className="p-6">
+                <BackButton />
+                <div className="text-center p-4">
+                    <h2 className="text-2xl font-bold mb-4">Listening History Tracking Disabled</h2>
+                    <p>Enable tracking in your settings to start recording your listening history.</p>
+                </div>
+            </div>
+        );
+    }
     if (error) return <div className="text-center text-red-500 p-4">{error.message}</div>;
     if (isLoading) return <div className="text-center p-4">Loading your listening history...</div>;
 
