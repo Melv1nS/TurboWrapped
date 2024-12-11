@@ -5,10 +5,14 @@ export async function GET(request: Request) {
     // Verify the request is from GitHub Actions
     const authHeader = request.headers.get('Authorization');
     if (authHeader !== `Bearer ${process.env.CRON_SECRET_KEY}`) {
+        console.log('Unauthorized request received');
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     try {
+        await prisma.$connect();
+        console.log('Database connected successfully');
+
         const users = await prisma.user.findMany({
             where: { trackingEnabled: true },
             include: {
@@ -17,6 +21,7 @@ export async function GET(request: Request) {
                 }
             }
         });
+        console.log(`Found ${users.length} users with tracking enabled`);
 
         const results = [];
         
@@ -81,6 +86,7 @@ export async function GET(request: Request) {
 
             } catch (error) {
                 console.error(`Failed to update history for user ${user.id}:`, error);
+                
                 results.push({ 
                     userId: user.id, 
                     status: 'error', 
@@ -92,9 +98,17 @@ export async function GET(request: Request) {
         return NextResponse.json({ success: true, results });
 
     } catch (error) {
-        console.error('Cron job failed:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        if (error instanceof Error) {
+            console.error('Error name:', error.name);
+            console.error('Error message:', error.message);
+            console.error('Error stack:', error.stack);
+        }
+        return NextResponse.json({ 
+            error: 'Internal server error',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        }, { status: 500 });
     } finally {
         await prisma.$disconnect();
+        console.log('Database disconnected');
     }
 }
