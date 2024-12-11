@@ -4,30 +4,16 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import useSWR from 'swr';
 import BackButton from '../components/BackButton';
+import type {
+    ListeningHistoryItem,
+    Stats,
+    TrackingPreferences,
+    FilterStats,
+    Filters,
+    ListeningHistoryResponse
+} from './types';
+import { FilterPanel } from '../components/FilterPanel';
 
-interface ListeningHistoryItem {
-    trackId: string;
-    trackName: string;
-    artistName: string;
-    albumName: string;
-    playedAt: string;
-    duration: number;
-}
-
-interface Stats {
-    totalTracks: number;
-    uniqueTracks: number;
-    uniqueArtists: number;
-    totalDuration: {
-        _sum: {
-            duration: number;
-        }
-    };
-}
-
-interface TrackingPreferences {
-    trackingEnabled: boolean;
-}
 
 const fetcher = async (url: string) => {
     const res = await fetch(url);
@@ -52,6 +38,23 @@ export default function ListeningHistory() {
         session ? 
         `/api/listening-history?page=${page}&startDate=${dateRange.startDate}&endDate=${dateRange.endDate}` 
         : null,
+        fetcher
+    );
+
+    const [filters, setFilters] = useState<Filters>({
+        genres: [],
+        artists: [],
+        timeOfDay: [],
+        daysOfWeek: [],
+        duration: {
+            min: 0,
+            max: 600000 // 10 minutes default
+        },
+        searchQuery: ''
+    });
+
+    const { data: filterStats } = useSWR<FilterStats>(
+        session ? '/api/filter-stats' : null,
         fetcher
     );
 
@@ -110,62 +113,112 @@ export default function ListeningHistory() {
                 </div>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-spotify-dark-grey p-4 rounded-lg">
-                    <h3 className="text-sm text-spotify-grey">Total Tracks</h3>
-                    <p className="text-2xl font-bold">{data.stats.totalTracks}</p>
-                </div>
-                <div className="bg-spotify-dark-grey p-4 rounded-lg">
-                    <h3 className="text-sm text-spotify-grey">Unique Tracks</h3>
-                    <p className="text-2xl font-bold">{data.stats.uniqueTracks}</p>
-                </div>
-                <div className="bg-spotify-dark-grey p-4 rounded-lg">
-                    <h3 className="text-sm text-spotify-grey">Unique Artists</h3>
-                    <p className="text-2xl font-bold">{data.stats.uniqueArtists}</p>
-                </div>
-                <div className="bg-spotify-dark-grey p-4 rounded-lg">
-                    <h3 className="text-sm text-spotify-grey">Total Listening Time</h3>
-                    <p className="text-2xl font-bold">
-                        {Math.floor(data.stats.totalDuration._sum.duration / 3600000)}h {Math.floor((data.stats.totalDuration._sum.duration % 3600000) / 60000)}m
-                    </p>
-                </div>
-            </div>
+            <div className="flex gap-6">
+                {/* Filters Panel
+                <div className="w-64 flex-shrink-0">
+                    {filterStats && (
+                        <FilterPanel
+                            filters={filters}
+                            filterStats={filterStats}
+                            onChange={setFilters}
+                        />
+                    )}
+                </div> */}
 
-            {/* History List */}
-            <div className="space-y-2">
-                {data.history.map((item: ListeningHistoryItem) => (
-                    <div 
-                        key={`${item.trackId}-${item.playedAt}`}
-                        className="flex items-center gap-4 p-3 bg-spotify-dark-grey rounded-lg hover:bg-opacity-70 transition-colors"
-                    >
-                        <div className="flex-grow">
-                            <h3 className="font-semibold">{item.trackName}</h3>
-                            <p className="text-sm text-spotify-grey">{item.artistName} • {item.albumName}</p>
+                {/* Main Content */}
+                <div className="flex-grow">
+                    {/* Stats Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                        <div className="bg-spotify-dark-grey p-4 rounded-lg">
+                            <h3 className="text-sm text-spotify-grey">Total Tracks</h3>
+                            <p className="text-2xl font-bold">{data.stats.totalTracks}</p>
                         </div>
-                        <div className="text-right">
-                            <p className="text-sm text-spotify-grey">{formatDateTime(item.playedAt)}</p>
-                            <p className="text-xs text-spotify-grey">{formatDuration(item.duration)}</p>
+                        <div className="bg-spotify-dark-grey p-4 rounded-lg">
+                            <h3 className="text-sm text-spotify-grey">Unique Tracks</h3>
+                            <p className="text-2xl font-bold">{data.stats.uniqueTracks}</p>
+                        </div>
+                        <div className="bg-spotify-dark-grey p-4 rounded-lg">
+                            <h3 className="text-sm text-spotify-grey">Unique Artists</h3>
+                            <p className="text-2xl font-bold">{data.stats.uniqueArtists}</p>
+                        </div>
+                        <div className="bg-spotify-dark-grey p-4 rounded-lg">
+                            <h3 className="text-sm text-spotify-grey">Total Listening Time</h3>
+                            <p className="text-2xl font-bold">
+                                {Math.floor(data.stats.totalDuration._sum.duration / 3600000)}h {Math.floor((data.stats.totalDuration._sum.duration % 3600000) / 60000)}m
+                            </p>
                         </div>
                     </div>
-                ))}
-            </div>
 
-            {/* Pagination */}
-            <div className="mt-6 flex justify-center gap-2">
-                {Array.from({ length: data.pagination.pages }, (_, i) => (
-                    <button
-                        key={i + 1}
-                        onClick={() => setPage(i + 1)}
-                        className={`px-3 py-1 rounded ${
-                            page === i + 1 
-                                ? 'bg-spotify-green text-black' 
-                                : 'bg-spotify-dark-grey text-white'
-                        }`}
-                    >
-                        {i + 1}
-                    </button>
-                ))}
+                    {/* History List */}
+                    <div className="space-y-2">
+                        {data.history
+                            .filter(item => {
+                                // Apply filters
+                                if (filters.searchQuery) {
+                                    const query = filters.searchQuery.toLowerCase();
+                                    if (!item.trackName.toLowerCase().includes(query) &&
+                                        !item.artistName.toLowerCase().includes(query)) {
+                                        return false;
+                                    }
+                                }
+
+                                if (filters.genres.length && 
+                                    !filters.genres.some(g => item.genres.includes(g))) {
+                                    return false;
+                                }
+
+                                if (filters.timeOfDay.length) {
+                                    const hour = new Date(item.playedAt).getHours();
+                                    const timeOfDay = 
+                                        hour < 6 ? 'night' :
+                                        hour < 12 ? 'morning' :
+                                        hour < 18 ? 'afternoon' : 'evening';
+                                    if (!filters.timeOfDay.includes(timeOfDay)) {
+                                        return false;
+                                    }
+                                }
+
+                                if (item.duration < filters.duration.min || 
+                                    item.duration > filters.duration.max) {
+                                    return false;
+                                }
+
+                                return true;
+                            })
+                            .map((item) => (
+                                <div 
+                                    key={`${item.trackId}-${item.playedAt}`}
+                                    className="flex items-center gap-4 p-3 bg-spotify-dark-grey rounded-lg hover:bg-opacity-70 transition-colors"
+                                >
+                                    <div className="flex-grow">
+                                        <h3 className="font-semibold">{item.trackName}</h3>
+                                        <p className="text-sm text-spotify-grey">{item.artistName} • {item.albumName}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-sm text-spotify-grey">{formatDateTime(item.playedAt)}</p>
+                                        <p className="text-xs text-spotify-grey">{formatDuration(item.duration)}</p>
+                                    </div>
+                                </div>
+                            ))}
+                    </div>
+
+                    {/* Pagination */}
+                    <div className="mt-6 flex justify-center gap-2">
+                        {Array.from({ length: data.pagination.pages }, (_, i) => (
+                            <button
+                                key={i + 1}
+                                onClick={() => setPage(i + 1)}
+                                className={`px-3 py-1 rounded ${
+                                    page === i + 1 
+                                        ? 'bg-spotify-green text-black' 
+                                        : 'bg-spotify-dark-grey text-white'
+                                }`}
+                            >
+                                {i + 1}
+                            </button>
+                        ))}
+                    </div>
+                </div>
             </div>
         </div>
     );
