@@ -1,0 +1,38 @@
+name: Update Listening History
+
+on:
+  schedule:
+    - cron: '0 */4 * * *'  # Runs every 4 hours
+  workflow_dispatch:        # Allows manual triggers
+
+jobs:
+  update-history:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check time
+        run: date
+        
+      - name: Trigger update endpoint
+        run: |
+          response=$(curl -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET_KEY }}" \
+            -H "Content-Type: application/json" \
+            -w "\n%{http_code}" \
+            https://turbo-wrapped.vercel.app/api/cron)
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "Response body: $body"
+          echo "Status code: $http_code"
+          
+          if [ "$http_code" -ge 400 ]; then
+            echo "Error: HTTP status code $http_code"
+            exit 1
+          fi
+          
+      - name: Check for errors
+        if: ${{ failure() }}
+        run: |
+          echo "Cron job failed"
+          exit 1

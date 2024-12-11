@@ -3,6 +3,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { signIn, signOut } from "next-auth/react";
+import TrackingToggle from './components/TrackingToggle';
 
 export default function Home() {
   const { data: session } = useSession();
@@ -44,7 +45,7 @@ export default function Home() {
               Top Genres
             </button>
           </div>
-
+          <TrackingToggle />
           <p className='opacity-70 mt-8 mb-5 underline cursor-pointer' onClick={() => signOut()}>Sign Out</p>
         </div>
       ) : (

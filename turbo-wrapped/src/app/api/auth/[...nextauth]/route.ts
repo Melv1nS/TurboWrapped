@@ -1,6 +1,7 @@
 import NextAuth from "next-auth/next";
 import { type NextAuthOptions } from "next-auth";
 import SpotifyProvider from 'next-auth/providers/spotify';
+import prisma from '@/app/lib/prisma';
 
 const OPTIONS: NextAuthOptions = {
     providers: [
@@ -12,6 +13,21 @@ const OPTIONS: NextAuthOptions = {
         }),
     ],
     callbacks: {
+        async signIn({ user }) {
+            // Create or update user in database
+            if (user.email) {
+                await prisma.user.upsert({
+                    where: { email: user.email },
+                    update: { name: user.name || '' },
+                    create: {
+                        email: user.email,
+                        name: user.name || '',
+                        trackingEnabled: false,
+                    },
+                });
+            }
+            return true;
+        },
         async jwt({ token, account, user }) {
             // Initial sign in
             if (account && user) {
