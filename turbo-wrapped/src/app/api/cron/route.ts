@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import prisma from '@/app/lib/prisma';
-import { OPTIONS } from '../auth/[...nextauth]/route';
+import prisma from '@/lib/prisma';
 
 export async function GET(request: Request) {
     // Verify the request is from GitHub Actions
@@ -8,9 +7,6 @@ export async function GET(request: Request) {
     if (authHeader !== `Bearer ${process.env.CRON_SECRET_KEY}`) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    const startTime = Date.now();
-    console.log(`Starting history update at ${new Date().toISOString()}`);
 
     try {
         const users = await prisma.user.findMany({
@@ -93,19 +89,12 @@ export async function GET(request: Request) {
             }
         }
 
-        const duration = Date.now() - startTime;
-        console.log(`
-            History update completed:
-            - Duration: ${duration}ms
-            - Users processed: ${users.length}
-            - Successful updates: ${results.filter(r => r.status === 'success').length}
-            - Failed updates: ${results.filter(r => r.status === 'error').length}
-        `);
-
         return NextResponse.json({ success: true, results });
 
     } catch (error) {
         console.error('Cron job failed:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    } finally {
+        await prisma.$disconnect();
     }
 }
