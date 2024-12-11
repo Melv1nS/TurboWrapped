@@ -150,44 +150,87 @@ export default function Home() {
             </div>
             
             <div className="flex flex-col gap-6 w-full max-w-4xl">
-              <div className="flex flex-col md:flex-row gap-6 items-center">
-                <div 
-                  className={`group bg-spotify-dark-elevated p-6 rounded-xl transition-all duration-300 flex-1
-                            ${isEnabled 
-                              ? 'hover:bg-spotify-dark-highlight cursor-pointer transform hover:-translate-y-2 hover:shadow-xl hover:shadow-spotify-green/20' 
-                              : 'opacity-50 cursor-not-allowed'
-                            }`}
-                  onClick={() => isEnabled && router.push('/listening-history')}
-                >
-                  <div className="flex flex-col h-full">
-                    <div className="flex items-center gap-3 mb-4">
-                      <svg 
-                        className={`w-8 h-8 text-spotify-green transition-transform
-                                  ${isEnabled ? 'group-hover:scale-110' : ''}`}
-                        fill="currentColor" 
-                        viewBox="0 0 24 24"
-                      >
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-14v7l6 3.5-1 1.5-7-4V6h2z"/>
-                      </svg>
-                      <h2 className="text-2xl font-bold text-white">History</h2>
+              <div className="flex flex-col md:flex-row gap-6 items-start">
+                <div className="flex flex-col gap-6 flex-1">
+                  <div 
+                    className={`group bg-spotify-dark-elevated p-6 rounded-xl transition-all duration-300
+                              ${isEnabled 
+                                ? 'hover:bg-spotify-dark-highlight cursor-pointer transform hover:-translate-y-2 hover:shadow-xl hover:shadow-spotify-green/20' 
+                                : 'opacity-50 cursor-not-allowed'
+                              }`}
+                    onClick={() => isEnabled && router.push('/listening-history')}
+                  >
+                    <div className="flex flex-col h-full">
+                      <div className="flex items-center gap-3 mb-4">
+                        <svg 
+                          className={`w-8 h-8 text-spotify-green transition-transform
+                                    ${isEnabled ? 'group-hover:scale-110' : ''}`}
+                          fill="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-14v7l6 3.5-1 1.5-7-4V6h2z"/>
+                        </svg>
+                        <h2 className="text-2xl font-bold text-white">History</h2>
+                      </div>
+                      <p className="text-gray-300 group-hover:text-white transition-colors">
+                        {isEnabled 
+                          ? "View your listening timeline" 
+                          : "Enable tracking to view history"}
+                      </p>
+                      <div className={`mt-4 flex items-center text-spotify-green transition-opacity
+                                    ${isEnabled ? 'opacity-0 group-hover:opacity-100' : 'opacity-50'}`}>
+                        <span>View history</span>
+                        <svg 
+                          className={`w-4 h-4 ml-2 transition-transform
+                                    ${isEnabled ? 'group-hover:translate-x-2' : ''}`}
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
                     </div>
-                    <p className="text-gray-300 group-hover:text-white transition-colors">
-                      {isEnabled 
-                        ? "View your listening timeline" 
-                        : "Enable tracking to view history"}
-                    </p>
-                    <div className={`mt-4 flex items-center text-spotify-green transition-opacity
-                                  ${isEnabled ? 'opacity-0 group-hover:opacity-100' : 'opacity-50'}`}>
-                      <span>View history</span>
-                      <svg 
-                        className={`w-4 h-4 ml-2 transition-transform
-                                  ${isEnabled ? 'group-hover:translate-x-2' : ''}`}
-                        fill="none" 
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
+                  </div>
+
+                  <div 
+                    className={`group bg-spotify-dark-elevated p-6 rounded-xl transition-all duration-300
+                              ${isEnabled 
+                                ? 'hover:bg-spotify-dark-highlight cursor-pointer transform hover:-translate-y-2 hover:shadow-xl hover:shadow-spotify-green/20' 
+                                : 'opacity-50 cursor-not-allowed'
+                              }`}
+                    onClick={() => isEnabled && router.push('/insights')}
+                  >
+                    <div className="flex flex-col h-full">
+                      <div className="flex items-center gap-3 mb-4">
+                        <svg 
+                          className={`w-8 h-8 text-spotify-green transition-transform
+                                    ${isEnabled ? 'group-hover:scale-110' : ''}`}
+                          fill="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M9 17c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm8.5-3.5l3.5 3.5-3.5 3.5v-7z M21.71 11.29l-9-9a.996.996 0 00-1.41 0l-9 9a.996.996 0 000 1.41l9 9c.39.39 1.02.39 1.41 0l9-9a.996.996 0 000-1.41z"/>
+                        </svg>
+                        <h2 className="text-2xl font-bold text-white">Insights</h2>
+                      </div>
+                      <p className="text-gray-300 group-hover:text-white transition-colors">
+                        {isEnabled 
+                          ? "Discover your listening patterns" 
+                          : "Enable tracking to view insights"}
+                      </p>
+                      <div className={`mt-4 flex items-center text-spotify-green transition-opacity
+                                    ${isEnabled ? 'opacity-0 group-hover:opacity-100' : 'opacity-50'}`}>
+                        <span>View insights</span>
+                        <svg 
+                          className={`w-4 h-4 ml-2 transition-transform
+                                    ${isEnabled ? 'group-hover:translate-x-2' : ''}`}
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
                     </div>
                   </div>
                 </div>
