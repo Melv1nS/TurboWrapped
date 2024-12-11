@@ -7,11 +7,7 @@ const prismaClientSingleton = () => {
       db: {
         url: process.env.DATABASE_URL
       },
-    },
-    connection: {
-      keepAlive: false,
-      maxUses: 1,
-    },
+    }
   })
 }
 
