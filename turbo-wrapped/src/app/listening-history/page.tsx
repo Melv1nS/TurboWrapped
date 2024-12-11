@@ -26,7 +26,7 @@ interface Stats {
 }
 
 interface TrackingPreferences {
-    isEnabled: boolean;
+    trackingEnabled: boolean;
 }
 
 const fetcher = async (url: string) => {
@@ -44,7 +44,7 @@ export default function ListeningHistory() {
     });
 
     const { data: trackingPrefs } = useSWR<TrackingPreferences>(
-        session ? '/api/user/tracking-preferences' : null,
+        session ? '/api/tracking-preferences' : null,
         fetcher
     );
 
@@ -66,7 +66,7 @@ export default function ListeningHistory() {
     };
 
     if (!session) return null;
-    if (!trackingPrefs?.isEnabled) {
+    if (!trackingPrefs?.trackingEnabled) {
         return (
             <div className="p-6">
                 <BackButton />
