@@ -13,10 +13,10 @@ const OPTIONS: NextAuthOptions = {
         }),
     ],
     callbacks: {
-        async signIn({ user }) {
-            // Create or update user in database
-            if (user.email) {
-                await prisma.user.upsert({
+        async signIn({ user, account }) {
+            if (user.email && account) {
+                // Create or update user
+                const dbUser = await prisma.user.upsert({
                     where: { email: user.email },
                     update: { name: user.name || '' },
                     create: {
@@ -25,6 +25,36 @@ const OPTIONS: NextAuthOptions = {
                         trackingEnabled: false,
                     },
                 });
+
+                // Store the Spotify account details
+                if (account.provider === 'spotify') {
+                    await prisma.account.upsert({
+                        where: {
+                            provider_providerAccountId: {
+                                provider: account.provider,
+                                providerAccountId: account.providerAccountId,
+                            },
+                        },
+                        update: {
+                            access_token: account.access_token,
+                            refresh_token: account.refresh_token,
+                            expires_at: account.expires_at,
+                            token_type: account.token_type,
+                            scope: account.scope,
+                        },
+                        create: {
+                            userId: dbUser.id,
+                            type: account.type,
+                            provider: account.provider,
+                            providerAccountId: account.providerAccountId,
+                            access_token: account.access_token,
+                            refresh_token: account.refresh_token,
+                            expires_at: account.expires_at,
+                            token_type: account.token_type,
+                            scope: account.scope,
+                        },
+                    });
+                }
             }
             return true;
         },
