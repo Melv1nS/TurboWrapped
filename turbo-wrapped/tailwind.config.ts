@@ -9,8 +9,14 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        spotify: {
+          green: '#1DB954',
+          black: '#191414',
+          white: '#FFFFFF',
+          grey: '#B3B3B3',
+          'dark-grey': '#282828',
+          'light-grey': '#404040',
+        },
       },
     },
   },

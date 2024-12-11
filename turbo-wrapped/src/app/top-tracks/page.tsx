@@ -123,14 +123,91 @@ export default function TopTracks() {
         return `${minutes}:${seconds.toString().padStart(2, '0')}`;
     };
 
+    // Add these utility functions
+    const calculateTrackStats = (tracks: Track[]) => {
+        const stats = {
+            // Time-based stats
+            averageDuration: Math.round(tracks.reduce((sum, track) => sum + track.duration_ms, 0) / tracks.length / 1000), // in seconds
+            totalDuration: tracks.reduce((sum, track) => sum + track.duration_ms, 0), // in ms
+            
+            // Release date analysis
+            averageReleaseYear: calculateAverageYear(tracks),
+            yearRange: calculateYearRange(tracks),
+            decadeDistribution: calculateDecadeDistribution(tracks),
+            
+            // Artist analysis
+            uniqueArtistsCount: countUniqueArtists(tracks),
+            artistAppearances: calculateArtistAppearances(tracks),
+            averageArtistsPerTrack: Number((tracks.reduce((sum, track) => sum + track.artists.length, 0) / tracks.length).toFixed(2)),
+            
+            // Album analysis
+            uniqueAlbumsCount: new Set(tracks.map(track => track.album.name)).size,
+            albumAppearances: calculateAlbumAppearances(tracks),
+        };
+
+        return stats;
+    };
+
+    const calculateAverageYear = (tracks: Track[]) => {
+        return Math.round(
+            tracks.reduce((sum, track) => sum + new Date(track.album.release_date).getFullYear(), 0) / tracks.length
+        );
+    };
+
+    const calculateYearRange = (tracks: Track[]) => {
+        const years = tracks.map(track => new Date(track.album.release_date).getFullYear());
+        return {
+            oldest: Math.min(...years),
+            newest: Math.max(...years),
+        };
+    };
+
+    const calculateDecadeDistribution = (tracks: Track[]) => {
+        const decades: { [key: string]: number } = {};
+        tracks.forEach(track => {
+            const year = new Date(track.album.release_date).getFullYear();
+            const decade = Math.floor(year / 10) * 10;
+            decades[`${decade}s`] = (decades[`${decade}s`] || 0) + 1;
+        });
+        return decades;
+    };
+
+    const countUniqueArtists = (tracks: Track[]) => {
+        return new Set(tracks.flatMap(track => track.artists.map(artist => artist.id))).size;
+    };
+
+    const calculateArtistAppearances = (tracks: Track[]) => {
+        const appearances: { [key: string]: number } = {};
+        tracks.forEach(track => {
+            track.artists.forEach(artist => {
+                appearances[artist.name] = (appearances[artist.name] || 0) + 1;
+            });
+        });
+        return Object.entries(appearances)
+            .sort(([,a], [,b]) => b - a)
+            .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
+    };
+
+    const calculateAlbumAppearances = (tracks: Track[]) => {
+        const appearances: { [key: string]: number } = {};
+        tracks.forEach(track => {
+            appearances[track.album.name] = (appearances[track.album.name] || 0) + 1;
+        });
+        return Object.entries(appearances)
+            .sort(([,a], [,b]) => b - a)
+            .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
+    };
+
+    const stats = calculateTrackStats(tracks);
+
     return (
-        <div className="p-6">
+        <div className="p-6 bg-spotify-black min-h-screen">
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">Your Top Tracks</h2>
+                <h2 className="text-2xl font-bold text-spotify-white">Your Top Tracks</h2>
                 <select 
                     value={timeRange}
                     onChange={(e) => setTimeRange(e.target.value)}
-                    className="bg-opacity-10 bg-white rounded-md p-2 text-sm"
+                    className="bg-spotify-dark-grey text-spotify-white rounded-md p-2 text-sm border-none focus:ring-2 focus:ring-spotify-green"
                 >
                     <option value="short_term">Last 4 Weeks</option>
                     <option value="medium_term">Last 6 Months</option>
@@ -138,69 +215,81 @@ export default function TopTracks() {
                 </select>
             </div>
             <div className="mb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-opacity-10 bg-white p-4 rounded-lg">
-                    <h3 className="text-xl font-semibold mb-3">Top Artists</h3>
+                <div className="bg-spotify-dark-grey p-4 rounded-lg">
+                    <h3 className="text-xl font-semibold mb-3 text-spotify-white">Top Artists</h3>
                     <div className="space-y-2">
                         {Object.entries(artistFrequency)
                             .sort(([,a], [,b]) => b - a)
                             .slice(0, 5)
                             .map(([artist, count]) => (
                                 <div key={artist} className="flex justify-between items-center">
-                                    <span className="truncate">{artist}</span>
-                                    <span className="text-sm opacity-70">{count} tracks</span>
+                                    <span className="truncate text-spotify-white">{artist}</span>
+                                    <span className="text-sm text-spotify-grey">{count} tracks</span>
                                 </div>
                             ))}
                     </div>
                 </div>
 
-                <div className="bg-opacity-10 bg-white p-4 rounded-lg">
-                    <h3 className="text-xl font-semibold mb-3">Top Albums</h3>
+                <div className="bg-spotify-dark-grey p-4 rounded-lg">
+                    <h3 className="text-xl font-semibold mb-3 text-spotify-white">Top Albums</h3>
                     <div className="space-y-2">
                         {Object.entries(albumDistribution)
                             .sort(([,a], [,b]) => b - a)
                             .slice(0, 5)
                             .map(([album, count]) => (
                                 <div key={album} className="flex justify-between items-center">
-                                    <span className="truncate">{album}</span>
-                                    <span className="text-sm opacity-70">{count} tracks</span>
+                                    <span className="truncate text-spotify-white">{album}</span>
+                                    <span className="text-sm text-spotify-grey">{count} tracks</span>
                                 </div>
                             ))}
                     </div>
                 </div>
 
-                <div className="bg-opacity-10 bg-white p-4 rounded-lg">
-                    <h3 className="text-xl font-semibold mb-3">Release Years</h3>
+                <div className="bg-spotify-dark-grey p-4 rounded-lg">
+                    <h3 className="text-xl font-semibold mb-3 text-spotify-white">Release Years</h3>
                     <div className="space-y-2">
                         {Object.entries(yearDistribution)
                             .sort(([a], [b]) => Number(b) - Number(a))
                             .slice(0, 5)
                             .map(([year, count]) => (
                                 <div key={year} className="flex justify-between items-center">
-                                    <span>{year}</span>
-                                    <span className="text-sm opacity-70">{count} tracks</span>
+                                    <span className="text-spotify-white">{year}</span>
+                                    <span className="text-sm text-spotify-grey">{count} tracks</span>
                                 </div>
                             ))}
                     </div>
                 </div>
 
-                <div className="bg-opacity-10 bg-white p-4 rounded-lg">
-                    <h3 className="text-xl font-semibold mb-3">Playlist Stats</h3>
+                <div className="bg-spotify-dark-grey p-4 rounded-lg">
+                    <h3 className="text-xl font-semibold mb-3 text-spotify-white">Playlist Stats</h3>
                     <div className="space-y-2">
                         <div className="flex justify-between items-center">
-                            <span>Total Duration</span>
-                            <span className="text-sm opacity-70">{formatTotalDuration(totalDuration)}</span>
+                            <span className="text-spotify-white">Average Duration</span>
+                            <span className="text-sm text-spotify-grey">{formatDuration(stats.averageDuration * 1000)}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                            <span>Total Tracks</span>
-                            <span className="text-sm opacity-70">{tracks.length}</span>
+                            <span className="text-spotify-white">Total Duration</span>
+                            <span className="text-sm text-spotify-grey">{formatTotalDuration(stats.totalDuration)}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                            <span>Unique Artists</span>
-                            <span className="text-sm opacity-70">{Object.keys(artistFrequency).length}</span>
+                            <span className="text-spotify-white">Average Release Year</span>
+                            <span className="text-sm text-spotify-grey">{stats.averageReleaseYear}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                            <span>Unique Albums</span>
-                            <span className="text-sm opacity-70">{Object.keys(albumDistribution).length}</span>
+                            <span className="text-spotify-white">Year Range</span>
+                            <span className="text-sm text-spotify-grey">{stats.yearRange.oldest} - {stats.yearRange.newest}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-spotify-white">Artists per Track</span>
+                            <span className="text-sm text-spotify-grey">{stats.averageArtistsPerTrack}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-spotify-white">Unique Artists</span>
+                            <span className="text-sm text-spotify-grey">{stats.uniqueArtistsCount}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-spotify-white">Unique Albums</span>
+                            <span className="text-sm text-spotify-grey">{stats.uniqueAlbumsCount}</span>
                         </div>
                     </div>
                 </div>
@@ -209,9 +298,9 @@ export default function TopTracks() {
                 {tracks.map((track, index) => (
                     <div 
                         key={track.id}
-                        className="flex items-center space-x-4 p-3 rounded-lg hover:bg-opacity-10 hover:bg-white transition-all"
+                        className="flex items-center space-x-4 p-3 rounded-lg hover:bg-spotify-dark-grey transition-all"
                     >
-                        <span className="w-6 text-opacity-50 text-white">
+                        <span className="w-6 text-spotify-grey">
                             {index + 1}
                         </span>
                         <Image
@@ -222,12 +311,12 @@ export default function TopTracks() {
                             className="rounded-md"
                         />
                         <div className="flex-grow">
-                            <h3 className="font-semibold">{track.name}</h3>
-                            <p className="text-sm opacity-70">
+                            <h3 className="font-semibold text-spotify-white">{track.name}</h3>
+                            <p className="text-sm text-spotify-grey">
                                 {track.artists.map(artist => artist.name).join(', ')}
                             </p>
                         </div>
-                        <div className="text-sm opacity-70">
+                        <div className="text-sm text-spotify-grey">
                             {formatDuration(track.duration_ms)}
                         </div>
                     </div>

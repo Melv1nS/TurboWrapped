@@ -3,19 +3,21 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --spotify-green: #1DB954;
+  --spotify-black: #191414;
+  --spotify-white: #FFFFFF;
+  --spotify-grey: #B3B3B3;
+  --spotify-dark-grey: #282828;
+  --spotify-light-grey: #404040;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
+  color: var(--spotify-white);
+  background: var(--spotify-black);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Optional: Add a gradient background effect */
+.spotify-gradient {
+  background: linear-gradient(to bottom, #1DB954 -50%, #191414 25%);
 }
