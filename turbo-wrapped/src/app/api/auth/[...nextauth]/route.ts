@@ -2,7 +2,7 @@ import NextAuth from "next-auth/next";
 import { type NextAuthOptions } from "next-auth";
 import SpotifyProvider from 'next-auth/providers/spotify';
 
-const OPTIONS: NextAuthOptions = {
+const authOptions: NextAuthOptions = {
     providers: [
         SpotifyProvider({
             authorization:
@@ -81,7 +81,7 @@ async function refreshAccessToken(token: any) {
     }
 }
 
-const handler = NextAuth(OPTIONS);
+const handler = NextAuth(authOptions);
 
-export { OPTIONS };
+export { authOptions };
 export { handler as GET, handler as POST };
