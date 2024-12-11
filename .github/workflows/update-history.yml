@@ -2,7 +2,7 @@ name: Update Listening History
 
 on:
   schedule:
-    - cron: '0 */4 * * *'  # Runs every 4 hours
+    - cron: '0 * * * *'  # Runs every hour
   workflow_dispatch:        # Allows manual triggers
 
 jobs:

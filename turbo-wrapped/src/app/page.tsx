@@ -199,7 +199,7 @@ export default function Home() {
 
               <div className="text-gray-400 text-sm bg-spotify-dark-elevated/50 p-4 rounded-lg">
                 <p className="leading-relaxed">
-                  When tracking is enabled, your listening history will be stored every 4 hours. 
+                  When tracking is enabled, your listening history will be stored every hour. 
                   This allows us to build a detailed picture of your music journey and generate 
                   more personalized insights over time. The more data we collect, the more 
                   interesting patterns and trends we can reveal about your listening habits.
