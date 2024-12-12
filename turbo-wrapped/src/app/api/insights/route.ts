@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { OPTIONS } from "../auth/[...nextauth]/route";
 import prisma from "@/app/lib/prisma";
+import { calculateDiversity, normalizeDiversity } from '@/app/utils/diversityCalculations';
 
 export async function GET(request: Request) {
     const session = await getServerSession(OPTIONS);
@@ -106,6 +107,51 @@ export async function GET(request: Request) {
 
         const streakInfo = calculateStreak(dailyPlays);
 
+        // Initialize diversity tracking
+        const genreCounts: Record<string, number> = {};
+        const artistCounts: Record<string, number> = {};
+        const albumCounts: Record<string, number> = {};
+        const timeOfDayCounts: Record<string, number> = {};
+
+        // Process tracks for diversity metrics
+        listeningHistory.forEach(entry => {
+            // Genre diversity
+            entry.genres.forEach(genre => {
+                genreCounts[genre] = (genreCounts[genre] || 0) + 1;
+            });
+
+            // Artist diversity
+            artistCounts[entry.artistName] = (artistCounts[entry.artistName] || 0) + 1;
+
+            // Album diversity (as a proxy for era diversity)
+            albumCounts[entry.albumName] = (albumCounts[entry.albumName] || 0) + 1;
+
+            // Time of day diversity (as a proxy for listening patterns)
+            const hour = new Date(entry.playedAt).getHours();
+            const timeBlock = Math.floor(hour / 6); // Split day into 4 blocks
+            timeOfDayCounts[timeBlock] = (timeOfDayCounts[timeBlock] || 0) + 1;
+        });
+
+        // Calculate diversity metrics
+        const diversityMetrics = {
+            genreDiversity: normalizeDiversity(
+                calculateDiversity(genreCounts),
+                20 // max expected genres
+            ),
+            artistDiversity: normalizeDiversity(
+                calculateDiversity(artistCounts),
+                100 // max expected artists
+            ),
+            albumDiversity: normalizeDiversity(
+                calculateDiversity(albumCounts),
+                200 // max expected albums
+            ),
+            timeOfDayDiversity: normalizeDiversity(
+                calculateDiversity(timeOfDayCounts),
+                4 // 4 time blocks in a day
+            ),
+        };
+
         return NextResponse.json({
             heatmap: heatmapData,
             duration: durationData,
@@ -121,7 +167,8 @@ export async function GET(request: Request) {
                     day: peakDay
                 },
                 streak: streakInfo
-            }
+            },
+            diversity: diversityMetrics
         });
 
     } catch (error) {

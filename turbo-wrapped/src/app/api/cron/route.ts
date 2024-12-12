@@ -56,10 +56,10 @@ export async function GET(request: Request) {
                 const data = await response.json();
                 
                 for (const item of data.items) {
-                    // Fetch album details to get genres
-                    const albumId = item.track.album.id;
-                    const albumResponse = await fetch(
-                        `https://api.spotify.com/v1/albums/${albumId}`,
+                    // Fetch artist details to get genres
+                    const artistId = item.track.artists[0].id;
+                    const artistResponse = await fetch(
+                        `https://api.spotify.com/v1/artists/${artistId}`,
                         {
                             headers: {
                                 Authorization: `Bearer ${spotifyAccount.access_token}`,
@@ -67,12 +67,12 @@ export async function GET(request: Request) {
                         }
                     );
 
-                    if (!albumResponse.ok) {
-                        console.warn(`Failed to fetch album details for ${albumId}`);
+                    if (!artistResponse.ok) {
+                        console.warn(`Failed to fetch artist details for ${artistId}`);
                     }
 
-                    const albumData = await albumResponse.json();
-                    const genres = albumResponse.ok ? albumData.genres : [];
+                    const artistData = await artistResponse.json();
+                    const genres = artistResponse.ok ? artistData.genres : [];
 
                     await prisma.listeningHistory.upsert({
                         where: {

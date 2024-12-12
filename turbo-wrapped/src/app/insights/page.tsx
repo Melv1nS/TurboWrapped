@@ -1,10 +1,11 @@
 'use client';
-
 import { useSession } from 'next-auth/react';
 import useSWR from 'swr';
+import { motion, AnimatePresence } from 'framer-motion';
 import BackButton from '../components/BackButton';
 import { formatDuration } from '../utils/formatters';
 import { ListeningPatternHeatmap } from '../components/ListeningPatternHeatmap';
+import { ListeningDiversityScore } from '../components/ListeningDiversityScore';
 
 const fetcher = async (url: string) => {
     const res = await fetch(url);
@@ -14,18 +15,12 @@ const fetcher = async (url: string) => {
 
 export default function Insights() {
     const { data: session } = useSession();
-    const { data: patternData, error, isLoading } = useSWR(
+    const { data: patternData, error, isLoading, isValidating } = useSWR(
         session ? '/api/insights' : null,
         fetcher
     );
 
-    if (!session) {
-        return null;
-    }
-
-    if (error) {
-        return <div className="text-red-500 p-4">Error loading insights: {error.message}</div>;
-    }
+    if (!session) return null;
 
     return (
         <div className="p-6">
@@ -35,13 +30,51 @@ export default function Insights() {
                 <div className="w-[100px]" /> {/* Spacer for alignment */}
             </div>
 
-            <div className="space-y-6">
-                {isLoading ? (
-                    <div className="bg-spotify-dark-grey p-6 rounded-lg animate-pulse">
-                        <div className="h-64 bg-spotify-light-grey/20 rounded" />
-                    </div>
-                ) : patternData && (
-                    <>
+            <AnimatePresence mode="wait">
+                {error ? (
+                    <motion.div
+                        key="error"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="text-center text-red-500 p-4"
+                    >
+                        {error.message || 'Failed to load insights'}
+                    </motion.div>
+                ) : isLoading ? (
+                    <motion.div
+                        key="loading"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="space-y-6"
+                    >
+                        {/* Stats Cards Skeleton */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            {[...Array(4)].map((_, i) => (
+                                <div 
+                                    key={i} 
+                                    className="bg-spotify-dark-grey p-4 rounded-lg animate-pulse"
+                                >
+                                    <div className="h-4 bg-white/10 rounded w-1/2 mb-2" />
+                                    <div className="h-6 bg-white/10 rounded w-3/4" />
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Heatmap Skeleton */}
+                        <div className="bg-spotify-dark-grey p-6 rounded-lg animate-pulse">
+                            <div className="h-64 bg-white/10 rounded" />
+                        </div>
+                    </motion.div>
+                ) : (
+                    <motion.div
+                        key="content"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="relative space-y-6"
+                    >
                         {/* Summary Stats */}
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div className="bg-spotify-dark-grey p-4 rounded-lg">
@@ -94,9 +127,13 @@ export default function Insights() {
 
                         {/* Heatmap */}
                         <ListeningPatternHeatmap data={patternData} />
-                    </>
+                        <div>
+                            {/* Diversity Score */}
+                            <ListeningDiversityScore data={patternData.diversity} />
+                        </div>
+                    </motion.div>
                 )}
-            </div>
+            </AnimatePresence>
         </div>
     );
 }
