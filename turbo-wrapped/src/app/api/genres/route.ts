@@ -2,10 +2,6 @@ import { getServerSession } from "next-auth";
 import { OPTIONS } from "../auth/[...nextauth]/route";
 import { NextResponse } from "next/server";
 
-interface Artist {
-    genres: string[];
-}
-
 interface GenreCount {
     name: string;
     count: number;
@@ -37,46 +33,60 @@ export async function GET(request: Request) {
     }
 
     try {
-        const spotifyResponse = await fetch(
-            `https://api.spotify.com/v1/me/top/artists?limit=50&time_range=${timeRange}`,
+        // Get user's top tracks
+        const tracksResponse = await fetch(
+            `https://api.spotify.com/v1/me/top/tracks?limit=30&time_range=${timeRange}`,
             {
                 headers: {
                     Authorization: `Bearer ${session.accessToken}`,
                 },
-                next: {
-                    revalidate: 3600 // Cache for 1 hour
-                }
             }
         );
 
-        if (!spotifyResponse.ok) {
-            throw new Error(`Spotify API error: ${spotifyResponse.statusText}`);
+        if (!tracksResponse.ok) {
+            throw new Error(`Failed to fetch top tracks: ${tracksResponse.statusText}`);
         }
 
-        const data = await spotifyResponse.json();
+        const tracksData = await tracksResponse.json();
         
-        // Count genre occurrences
+        // Get unique artist IDs from the tracks
+        const uniqueArtistIds = [...new Set(
+            tracksData.items.flatMap((track: any) => 
+                track.artists.map((artist: any) => artist.id)
+            )
+        )];
+
+        // Fetch artist details to get genres
+        const artistResponses = await Promise.all(
+            uniqueArtistIds.map(artistId =>
+                fetch(`https://api.spotify.com/v1/artists/${artistId}`, {
+                    headers: {
+                        Authorization: `Bearer ${session.accessToken}`,
+                    },
+                })
+            )
+        );
+
+        // Count genres from artists
         const genreCounts: { [key: string]: number } = {};
-        data.items.forEach((artist: Artist) => {
-            artist.genres.forEach(genre => {
-                genreCounts[genre] = (genreCounts[genre] || 0) + 1;
-            });
-        });
-
-        // Convert to array and sort by count
-        const sortedGenres: GenreCount[] = Object.entries(genreCounts)
-            .map(([name, count]) => ({ name, count }))
-            .sort((a, b) => b.count - a.count)
-            .slice(0, 100); // Get top 100 genres
-
-        // Create response with cache headers
-        const apiResponse = NextResponse.json(sortedGenres);
         
-        // Set cache control headers
-        apiResponse.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=7200');
-        apiResponse.headers.set('Vary', 'Cookie, Authorization');
+        for (const response of artistResponses) {
+            if (response.ok) {
+                const artistData = await response.json();
+                if (artistData.genres && Array.isArray(artistData.genres)) {
+                    artistData.genres.forEach((genre: string) => {
+                        genreCounts[genre] = (genreCounts[genre] || 0) + 1;
+                    });
+                }
+            }
+        }
 
-        return apiResponse;
+        // Sort genres by count
+        const sortedGenres = Object.entries(genreCounts)
+            .map(([name, count]): GenreCount => ({ name, count }))
+            .sort((a, b) => b.count - a.count);
+
+        return NextResponse.json(sortedGenres);
 
     } catch (error) {
         console.error('Error fetching genres:', error);

@@ -21,3 +21,16 @@ body {
 .spotify-gradient {
   background: linear-gradient(to bottom, #1DB954 -50%, #191414 25%);
 }
+
+.tagcloud {
+  color: #fff;
+}
+
+.tagcloud--item {
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.tagcloud--item:hover {
+  color: #36d399;
+}
