@@ -1,55 +1,73 @@
 'use client';
 import { useState } from 'react';
-import { QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 import { Bar } from 'recharts';
 
 interface DiversityMetrics {
     genreDiversity: number;
     artistDiversity: number;
     albumDiversity: number;
-    timeOfDayDiversity: number;
 }
 
 interface ListeningDiversityScoreProps {
     data: DiversityMetrics;
 }
 
+function getBadge(score: number): { title: string; description: string } {
+    if (score >= 80) {
+        return { 
+            title: "Music Omnivore", 
+            description: "Your taste is as vast as the universe 🌌" 
+        };
+    } else if (score >= 60) {
+        return { 
+            title: "Genre Adventurer", 
+            description: "Always exploring new musical territories 🗺️" 
+        };
+    } else if (score >= 40) {
+        return { 
+            title: "Melody Mixer", 
+            description: "You keep things interesting! 🎵" 
+        };
+    } else if (score >= 20) {
+        return { 
+            title: "Comfort Groover", 
+            description: "You know what you like 🎧" 
+        };
+    } else {
+        return { 
+            title: "Genre Specialist", 
+            description: "Master of your musical domain 👑" 
+        };
+    }
+}
+
 export function ListeningDiversityScore({ data }: ListeningDiversityScoreProps) {
-    const [showTooltip, setShowTooltip] = useState(false);
-    
     const chartData = [
         {
             name: 'Genre Variety',
             score: data.genreDiversity * 100,
-            weight: 30,
+            weight: 40,
             description: 'How diverse your music genres are'
         },
         {
             name: 'Artist Variety',
             score: data.artistDiversity * 100,
-            weight: 30,
+            weight: 40,
             description: 'Distribution across different artists'
         },
         {
             name: 'Album Variety',
             score: data.albumDiversity * 100,
-            weight: 15,
+            weight: 20,
             description: 'Range of albums you listen to'
-        },
-        {
-            name: 'Listening Pattern',
-            score: data.timeOfDayDiversity * 100,
-            weight: 15,
-            description: 'How varied your listening times are'
         },
     ].sort((a, b) => b.score - a.score); // Sort by score descending
 
     const calculateOverallScore = (): number => {
         const weights = {
-            genreDiversity: 0.3,
-            artistDiversity: 0.3,
-            albumDiversity: 0.15,
-            timeOfDayDiversity: 0.15,
+            genreDiversity: 0.4,
+            artistDiversity: 0.4,
+            albumDiversity: 0.2,
         };
 
         return Math.round(
@@ -60,21 +78,31 @@ export function ListeningDiversityScore({ data }: ListeningDiversityScoreProps) 
         );
     };
 
+    const overallScore = calculateOverallScore();
+    const badge = getBadge(overallScore);
+
     return (
         <div className="bg-spotify-dark-grey p-6 rounded-lg">
             <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold">Listening Diversity</h3>
-                <div className="flex items-center gap-2">
-                    <span className="text-2xl font-bold text-spotify-green">
-                        {calculateOverallScore()}%
-                    </span>
-                    <button
-                        className="text-spotify-grey hover:text-white transition-colors"
-                        onMouseEnter={() => setShowTooltip(true)}
-                        onMouseLeave={() => setShowTooltip(false)}
-                    >
-                        <QuestionMarkCircleIcon className="h-5 w-5" />
-                    </button>
+                <div className="space-y-2">
+                    <h3 className="text-xl font-bold">Listening Diversity</h3>
+                    <div className="flex items-center gap-2">
+                        <div className="bg-[#282828] px-3 py-1 rounded-full">
+                            <span className="text-sm font-medium text-spotify-green">{badge.title}</span>
+                        </div>
+                        <span className="text-xs text-spotify-grey">{badge.description}</span>
+                    </div>
+                </div>
+                <span className="text-2xl font-bold text-spotify-green">
+                    {overallScore}%
+                </span>
+            </div>
+
+            {/* Updated formula display */}
+            <div className="mb-6 text-sm text-spotify-grey">
+                <p className="mb-2">Score Formula:</p>
+                <div className="bg-[#282828] p-3 rounded font-mono">
+                    Score = (Genre × 0.4) + (Artist × 0.4) + (Album × 0.2)
                 </div>
             </div>
 
@@ -96,17 +124,6 @@ export function ListeningDiversityScore({ data }: ListeningDiversityScoreProps) 
                     </div>
                 ))}
             </div>
-
-            {showTooltip && (
-                <div className="absolute mt-2 p-3 bg-spotify-black rounded-lg shadow-lg text-xs max-w-xs">
-                    <p className="mb-2">Your Overall Diversity Score is weighted based on importance:</p>
-                    <ul className="list-disc list-inside space-y-1">
-                        <li>Genre & Artist Variety: 30% each</li>
-                        <li>Album Variety & Listening Pattern: 15% each</li>
-                    </ul>
-                    <p className="mt-2">Higher scores mean more diverse listening habits!</p>
-                </div>
-            )}
         </div>
     );
 }

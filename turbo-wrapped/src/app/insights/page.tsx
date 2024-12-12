@@ -15,10 +15,17 @@ const fetcher = async (url: string) => {
 
 export default function Insights() {
     const { data: session } = useSession();
-    const { data: patternData, error, isLoading, isValidating } = useSWR(
-        session ? '/api/insights' : null,
+    const { data: patterns, error: patternsError, isLoading: patternsLoading } = useSWR(
+        session ? '/api/heatmap' : null,
         fetcher
     );
+    const { data: diversity, error: diversityError, isLoading: diversityLoading } = useSWR(
+        session ? '/api/diversity' : null,
+        fetcher
+    );
+
+    const isLoading = patternsLoading || diversityLoading;
+    const error = patternsError || diversityError;
 
     if (!session) return null;
 
@@ -79,31 +86,31 @@ export default function Insights() {
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div className="bg-spotify-dark-grey p-4 rounded-lg">
                                 <h3 className="text-sm text-spotify-grey">Total Plays</h3>
-                                <p className="text-2xl font-bold">{patternData.stats.totalPlays}</p>
+                                <p className="text-2xl font-bold">{patterns.stats.totalPlays}</p>
                             </div>
                             <div className="bg-spotify-dark-grey p-4 rounded-lg">
                                 <h3 className="text-sm text-spotify-grey">Total Listening Time</h3>
                                 <p className="text-2xl font-bold">
-                                    {formatDuration(patternData.stats.totalDuration)}
+                                    {formatDuration(patterns.stats.totalDuration)}
                                 </p>
                             </div>
                             <div className="bg-spotify-dark-grey p-4 rounded-lg">
                                 <h3 className="text-sm text-spotify-grey">Peak Hour</h3>
                                 <p className="text-2xl font-bold">
-                                    {patternData.stats.peakListening.hour === 0 ? '12 AM' : 
-                                     patternData.stats.peakListening.hour === 12 ? '12 PM' : 
-                                     patternData.stats.peakListening.hour > 12 ? 
-                                     `${patternData.stats.peakListening.hour - 12} PM` : 
-                                     `${patternData.stats.peakListening.hour} AM`}
+                                    {patterns.stats.peakListening.hour === 0 ? '12 AM' : 
+                                     patterns.stats.peakListening.hour === 12 ? '12 PM' : 
+                                     patterns.stats.peakListening.hour > 12 ? 
+                                     `${patterns.stats.peakListening.hour - 12} PM` : 
+                                     `${patterns.stats.peakListening.hour} AM`}
                                 </p>
                             </div>
                             <div className="bg-spotify-dark-grey p-4 rounded-lg">
                                 <h3 className="text-sm text-spotify-grey">Longest Streak</h3>
                                 <div className="flex items-center gap-2">
                                     <p className="text-2xl font-bold">
-                                        {patternData.stats.streak.count} Days
+                                        {patterns.stats.streak.count} Days
                                     </p>
-                                    {patternData.stats.streak.count > 0 && (
+                                    {patterns.stats.streak.count > 0 && (
                                         <svg 
                                             className="w-5 h-5 text-spotify-green" 
                                             fill="currentColor" 
@@ -117,19 +124,19 @@ export default function Insights() {
                                         </svg>
                                     )}
                                 </div>
-                                {patternData.stats.streak.count > 0 && (
+                                {patterns.stats.streak.count > 0 && (
                                     <p className="text-xs text-spotify-grey mt-1">
-                                        {patternData.stats.streak.startDay} - {patternData.stats.streak.endDay}
+                                        {patterns.stats.streak.startDay} - {patterns.stats.streak.endDay}
                                     </p>
                                 )}
                             </div>
                         </div>
 
                         {/* Heatmap */}
-                        <ListeningPatternHeatmap data={patternData} />
+                        <ListeningPatternHeatmap data={patterns} />
                         <div>
                             {/* Diversity Score */}
-                            <ListeningDiversityScore data={patternData.diversity} />
+                            <ListeningDiversityScore data={diversity.diversity} />
                         </div>
                     </motion.div>
                 )}

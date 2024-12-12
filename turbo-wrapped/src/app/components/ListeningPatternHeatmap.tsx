@@ -24,6 +24,7 @@ interface PatternData {
             endDay: string | null;
         };
     };
+
 }
 
 export function ListeningPatternHeatmap({ data }: { data: PatternData }) {
@@ -43,6 +44,7 @@ export function ListeningPatternHeatmap({ data }: { data: PatternData }) {
             duration: data.duration[dayIndex][hourIndex]
         }))
     }));
+
 
     const options: ApexCharts.ApexOptions = {
         chart: {
