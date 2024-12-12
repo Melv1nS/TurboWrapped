@@ -13,6 +13,50 @@ const fetcher = async (url: string) => {
     return res.json();
 };
 
+const getBadge = (score: number): { title: string; description: string } => {
+    if (score >= 90) {
+        return {
+            title: 'Musical Explorer',
+            description: 'Your listening habits are incredibly diverse!'
+        };
+    } else if (score >= 70) {
+        return {
+            title: 'Genre Hopper',
+            description: 'You enjoy a wide variety of music!'
+        };
+    } else if (score >= 50) {
+        return {
+            title: 'Balanced Listener',
+            description: 'You have a good mix of favorites and exploration.'
+        };
+    } else if (score >= 30) {
+        return {
+            title: 'Comfort Seeker',
+            description: 'You know what you like and stick to it.'
+        };
+    } else {
+        return {
+            title: 'Focused Fan',
+            description: "You're deeply passionate about specific music."
+        };
+    }
+};
+
+const calculateOverallScore = (data: DiversityMetrics): number => {
+    const weights = {
+        genreDiversity: 0.4,
+        artistDiversity: 0.4,
+        albumDiversity: 0.2,
+    };
+
+    return Math.round(
+        Object.entries(data).reduce(
+            (score, [key, value]) => score + value * weights[key as keyof DiversityMetrics] * 100,
+            0
+        )
+    );
+};
+
 export default function Insights() {
     const { data: session } = useSession();
     const { data: patterns, error: patternsError, isLoading: patternsLoading } = useSWR(
@@ -83,7 +127,7 @@ export default function Insights() {
                         className="relative space-y-6"
                     >
                         {/* Summary Stats */}
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                             <div className="bg-spotify-dark-grey p-4 rounded-lg">
                                 <h3 className="text-sm text-spotify-grey">Total Plays</h3>
                                 <p className="text-2xl font-bold">{patterns.stats.totalPlays}</p>
@@ -129,6 +173,19 @@ export default function Insights() {
                                         {patterns.stats.streak.startDay} - {patterns.stats.streak.endDay}
                                     </p>
                                 )}
+                            </div>
+                            <div className="bg-spotify-dark-grey p-4 rounded-lg">
+                                <h3 className="text-sm text-spotify-grey">Diversity Score</h3>
+                                <p className="text-2xl font-bold text-spotify-green">
+                                    {calculateOverallScore(diversity.diversity)}%
+                                </p>
+                                <div className="mt-2">
+                                    <div className="bg-[#282828] px-2 py-1 rounded-full inline-block">
+                                        <span className="text-xs font-medium text-spotify-green">
+                                            {getBadge(calculateOverallScore(diversity.diversity)).title}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
