@@ -12,6 +12,13 @@ const fetcher = async (url: string) => {
     return res.json();
 };
 
+const LoadingSpinner = () => (
+    <div className="flex items-center justify-center w-full h-64">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-spotify-green"></div>
+        <span className="sr-only">Loading...</span>
+    </div>
+);
+
 export default function Insights() {
     const router = useRouter();
     const { data: session } = useSession();
@@ -68,7 +75,7 @@ export default function Insights() {
             {error ? (
                 <p className="text-red-500">Failed to load listening history: {error.message}</p>
             ) : isLoading ? (
-                <p>Loading...</p>
+                <LoadingSpinner />
             ) : (
                 <ListeningPatternHeatmaps data={listeningHistory} />
             )}
