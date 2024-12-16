@@ -14,11 +14,36 @@ interface ListeningHistoryItem {
 
 interface PatternData {
     history: ListeningHistoryItem[];
-    // ... other properties if needed ...
 }
 
-export function ListeningPatternHeatmaps({ data }: { data: PatternData }) {
+export function Heatmaps({ data }: { data: PatternData }) {
     const [timeRange, setTimeRange] = useState<'week' | 'month' | 'year'>('month');
+
+    const getFilteredData = (range: 'week' | 'month' | 'year'): PatternData => {
+        const now = new Date();
+        const startDate = new Date();
+
+        switch (range) {
+            case 'week':
+                startDate.setDate(now.getDate() - 7);
+                break;
+            case 'month':
+                startDate.setMonth(now.getMonth() - 1);
+                break;
+            case 'year':
+                startDate.setFullYear(now.getFullYear() - 1);
+                break;
+        }
+
+        return {
+            history: data.history.filter(item => {
+                const playedAt = new Date(item.playedAt);
+                return playedAt >= startDate && playedAt <= now;
+            })
+        };
+    };
+
+    const filteredData = getFilteredData(timeRange);
 
     return (
         <div className="bg-spotify-dark-grey p-6 rounded-lg">
@@ -37,11 +62,9 @@ export function ListeningPatternHeatmaps({ data }: { data: PatternData }) {
                 </div>
             </div>
 
-
-
-            {timeRange === 'week' && <WeekHeatmap data={data} />}
-            {timeRange === 'month' && <MonthHeatmap data={data} />}
-            {timeRange === 'year' && <YearHeatmap data={data} />}
+            {timeRange === 'week' && <WeekHeatmap data={filteredData} />}
+            {timeRange === 'month' && <MonthHeatmap data={filteredData} />}
+            {timeRange === 'year' && <YearHeatmap data={filteredData} />}
         </div>
     );
 }

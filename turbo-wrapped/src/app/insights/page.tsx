@@ -2,7 +2,7 @@
 import { useSession } from 'next-auth/react';
 import useSWR from 'swr';
 import { useState } from 'react';
-import { ListeningPatternHeatmaps } from '@/app/components/heatmaps/Heatmaps';
+import { Heatmaps } from '@/app/components/heatmaps/Heatmaps';
 import { useRouter } from 'next/navigation';
 import { ArrowLeftIcon } from '@heroicons/react/24/solid';
 
@@ -22,39 +22,9 @@ const LoadingSpinner = () => (
 export default function Insights() {
     const router = useRouter();
     const { data: session } = useSession();
-    const [timeRange, setTimeRange] = useState<'week' | 'month' | 'year'>('month');
-
-    const calculateDateRange = (range: 'week' | 'month' | 'year') => {
-        const today = new Date();
-        let startDate: Date;
-
-        switch (range) {
-            case 'week':
-                startDate = new Date(today);
-                startDate.setDate(today.getDate() - 7);
-                break;
-            case 'month':
-                startDate = new Date(today);
-                startDate.setMonth(today.getMonth() - 1);
-                break;
-            case 'year':
-                startDate = new Date(today);
-                startDate.setFullYear(today.getFullYear() - 1);
-                break;
-            default:
-                startDate = new Date(today);
-        }
-
-        return {
-            startDate: startDate.toISOString().split('T')[0],
-            endDate: today.toISOString().split('T')[0]
-        };
-    };
-
-    const dateRange = calculateDateRange(timeRange);
 
     const { data: listeningHistory, error, isLoading } = useSWR(
-        session ? `/api/listening-history?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}` : null,
+        session ? '/api/listening-history' : null,
         fetcher
     );
 
@@ -77,7 +47,7 @@ export default function Insights() {
             ) : isLoading ? (
                 <LoadingSpinner />
             ) : (
-                <ListeningPatternHeatmaps data={listeningHistory} />
+                <Heatmaps data={listeningHistory} />
             )}
         </div>
     );
