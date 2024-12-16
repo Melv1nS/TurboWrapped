@@ -1,15 +1,18 @@
 'use client'
-import { useSession } from "next-auth/react";
+import { useSession, signIn, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { signIn, signOut } from "next-auth/react";
 import TrackingToggle from './components/TrackingToggle';
 import { useTrackingState } from './hooks/useTrackingState';
 
 export default function Home() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const { isEnabled } = useTrackingState();
+
+  if (status === "loading") {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-spotify-dark to-black">
@@ -264,7 +267,9 @@ export default function Home() {
             </p>
 
             <button 
-              onClick={() => signIn('spotify')} 
+              onClick={() => {
+                signIn('spotify').catch(error => console.error("Sign-in error:", error));
+              }} 
               className="bg-spotify-green text-black font-bold py-4 px-8 rounded-full hover:scale-105 transition-transform"
             >
               Connect with Spotify
