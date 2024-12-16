@@ -6,20 +6,25 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "seed": "ts-node scripts/seed.js"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.0",
     "@heroicons/react": "^2.2.0",
     "@prisma/client": "^6.0.1",
+    "@types/react-simple-maps": "^3.0.6",
+    "@types/react-tooltip": "^4.2.4",
     "@vercel/analytics": "^1.4.1",
     "@vercel/speed-insights": "^1.1.0",
     "apexcharts": "^4.2.0",
     "chart.js": "^4.4.7",
     "date-fns": "^4.1.0",
     "framer-motion": "^11.13.5",
+    "leaflet": "^1.9.4",
     "next": "15.0.4",
     "next-auth": "^4.24.11",
+    "node-fetch": "^3.3.2",
     "react": "^18.2.0",
     "react-apexcharts": "^1.7.0",
     "react-calendar-heatmap": "^1.9.0",
@@ -27,10 +32,14 @@
     "react-datepicker": "^7.5.0",
     "react-dom": "^18.2.0",
     "react-icons": "^5.4.0",
+    "react-leaflet": "^4.2.1",
+    "react-simple-maps": "^3.0.0",
     "react-tooltip": "^5.28.0",
     "recharts": "^2.14.1",
     "swr": "^2.2.5",
-    "TagCloud": "^2.5.0"
+    "TagCloud": "^2.5.0",
+    "topojson-client": "^3.1.0",
+    "world-atlas": "^2.0.2"
   },
   "devDependencies": {
     "@types/node": "^20",
@@ -41,6 +50,7 @@
     "postcss": "^8",
     "prisma": "^6.0.1",
     "tailwindcss": "^3.4.1",
+    "ts-node": "^10.9.2",
     "typescript": "^5"
   }
 }

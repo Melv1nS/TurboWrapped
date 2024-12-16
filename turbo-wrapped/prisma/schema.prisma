@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,51 +7,62 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ... existing configuration ...
-
 model Account {
-    id                String  @id @default(cuid())
-    userId            String
-    type              String
-    provider          String
-    providerAccountId String
-    refresh_token     String?  @db.Text
-    access_token      String?  @db.Text
-    expires_at        Int?
-    token_type        String?
-    scope             String?
-    id_token          String?  @db.Text
-    session_state     String?
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-    @@unique([provider, providerAccountId])
+  @@unique([provider, providerAccountId])
 }
 
 model User {
-    id              String    @id @default(cuid())
-    name            String?
-    email           String?   @unique
-    trackingEnabled Boolean   @default(false)
-    accounts        Account[]           // Add this line
-    listeningHistory ListeningHistory[]
+  id               String             @id @default(cuid())
+  name             String?
+  email            String?            @unique
+  trackingEnabled  Boolean            @default(false)
+  accounts         Account[]
+  listeningHistory ListeningHistory[]
 }
 
 model ListeningHistory {
-    id          String   @id @default(cuid())
-    user        User     @relation(fields: [userId], references: [id])
-    userId      String
-    trackId     String
-    trackName   String
-    artistName  String
-    albumName   String
-    genres      String[]
-    playedAt    DateTime
-    duration    Int
-    source      String   @default("spotify")
-    createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String
+  trackId    String
+  trackName  String
+  artistName String
+  albumName  String
+  genres     String[]
+  playedAt   DateTime
+  duration   Int
+  source     String   @default("spotify")
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id])
 
-    @@unique([userId, trackId, playedAt])
-    @@index([userId])
-    @@index([playedAt])
+  @@unique([userId, trackId, playedAt])
+  @@index([userId])
+  @@index([playedAt])
+}
+
+model ArtistLocation {
+    id          String   @id @default(cuid())
+    artistId    String   @unique
+    artistName  String
+    country     String?
+    city        String?
+    latitude    Float?
+    longitude   Float?
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+
+    @@index([artistName])
 }

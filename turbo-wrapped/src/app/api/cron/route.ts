@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from '@/app/lib/prisma';
+import { getOrCreateArtistLocation } from '@/app/utils/artistLocation';
 
 export async function GET(request: Request) {
     // Verify the request is from GitHub Actions
@@ -56,21 +57,23 @@ export async function GET(request: Request) {
                 const data = await response.json();
                 
                 for (const item of data.items) {
-                    // Fetch artist details to get genres
                     const artistId = item.track.artists[0].id;
-                    const artistResponse = await fetch(
-                        `https://api.spotify.com/v1/artists/${artistId}`,
-                        {
-                            headers: {
-                                Authorization: `Bearer ${spotifyAccount.access_token}`,
-                            },
-                        }
-                    );
+                    
+                    // Process artist location in parallel with other operations
+                    await Promise.all([
+                        getOrCreateArtistLocation(artistId, item.track.artists[0].name),
+                        // Fetch artist details to get genres
+                        fetch(
+                            `https://api.spotify.com/v1/artists/${artistId}`,
+                            {
+                                headers: {
+                                    Authorization: `Bearer ${spotifyAccount.access_token}`,
+                                },
+                            }
+                        )
+                    ]);
 
-                    if (!artistResponse.ok) {
-                        console.warn(`Failed to fetch artist details for ${artistId}`);
-                    }
-
+                    const artistResponse = await artistResponsePromise;
                     const artistData = await artistResponse.json();
                     const genres = artistResponse.ok ? artistData.genres : [];
 
