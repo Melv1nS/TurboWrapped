@@ -22,13 +22,33 @@ const countryNameMapping: Record<string, string> = {
     // Add more mappings as needed
 };
 
-export function ArtistWorldMap({ locations }: { locations: ArtistLocation[] }) {
+// Modify the component props to accept both datasets
+interface Props {
+  locations: ArtistLocation[];
+  userArtists: Set<string>; // Set of artist names the user has listened to
+}
+
+export function ArtistWorldMap({ locations, userArtists }: Props) {
     const [tooltipContent, setTooltipContent] = useState("");
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCountry, setSelectedCountry] = useState<{
         name: string;
         artists: string[];
     } | null>(null);
+
+    // Add a default empty Set if userArtists is undefined
+    const safeUserArtists = userArtists || new Set<string>();
+
+    // Add these console logs near the start of the component
+    console.log("Total locations:", locations?.length);
+    console.log("User artists:", Array.from(safeUserArtists));
+
+    // Filter locations to only include artists the user has listened to
+    const filteredLocations = useMemo(() => {
+        const filtered = locations.filter(location => safeUserArtists.has(location.artistName));
+        console.log("Filtered locations:", filtered.length);
+        return filtered;
+    }, [locations, safeUserArtists]);
 
     // Add console.log to debug
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,7 +65,7 @@ export function ArtistWorldMap({ locations }: { locations: ArtistLocation[] }) {
 
     // Group artists by country with debug logging
     const artistsByCountry = useMemo(() => {
-        const grouped = locations.reduce((acc, loc) => {
+        const grouped = filteredLocations.reduce((acc, loc) => {
             const normalizedCountry = countryNameMapping[loc.country] || loc.country;
             if (!acc[normalizedCountry]) {
                 acc[normalizedCountry] = [];
@@ -56,7 +76,7 @@ export function ArtistWorldMap({ locations }: { locations: ArtistLocation[] }) {
         
         console.log("Grouped artists by country:", grouped);
         return grouped;
-    }, [locations]);
+    }, [filteredLocations]);
 
     // Calculate artists per country
     const countryData = useMemo(() => {
@@ -260,7 +280,7 @@ export function ArtistWorldMap({ locations }: { locations: ArtistLocation[] }) {
                 )}
             </div>
             <div className="text-center text-spotify-grey mt-4">
-                Showing locations for {locations.length} artists
+                Showing locations for {filteredLocations.length} artists
             </div>
         </div>
     );

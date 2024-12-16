@@ -23,6 +23,9 @@ export default function Insights() {
         fetcher
     );
 
+    // Create a Set of artist names from listening history
+    const userArtists = new Set(listeningHistory?.history?.map(item => item.artistName) || []);
+
     if (!session) {
         return (
             <div className="p-6 text-center">
@@ -73,7 +76,10 @@ export default function Insights() {
                     </div>
                 ) : locationData?.locations?.length ? (
                     <div className="h-[600px] w-full">
-                        <ArtistWorldMap locations={locationData.locations} />
+                        <ArtistWorldMap 
+                            locations={locationData.locations} 
+                            userArtists={userArtists}
+                        />
                     </div>
                 ) : (
                     <div className="text-center text-spotify-grey p-4">
