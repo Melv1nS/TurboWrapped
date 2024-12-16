@@ -1,19 +1,17 @@
 'use client'
 import { useSession } from "next-auth/react";
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import useSWR from 'swr';
 import BackButton from '../components/BackButton';
+import ReactDatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import type {
-    ListeningHistoryItem,
-    Stats,
     TrackingPreferences,
     FilterStats,
     Filters,
     ListeningHistoryResponse
 } from './types';
-import { FilterPanel } from '../components/FilterPanel';
-
 
 const fetcher = async (url: string) => {
     const res = await fetch(url);
@@ -29,7 +27,7 @@ export default function ListeningHistory() {
         endDate: new Date().toISOString().split('T')[0]
     });
 
-    const { data: trackingPrefs, isLoading: prefsLoading } = useSWR<TrackingPreferences>(
+    const { data: trackingPrefs } = useSWR<TrackingPreferences>(
         session ? '/api/tracking-preferences' : null,
         fetcher
     );
@@ -40,18 +38,6 @@ export default function ListeningHistory() {
         : null,
         fetcher
     );
-
-    const [filters, setFilters] = useState<Filters>({
-        genres: [],
-        artists: [],
-        timeOfDay: [],
-        daysOfWeek: [],
-        duration: {
-            min: 0,
-            max: 600000 // 10 minutes default
-        },
-        searchQuery: ''
-    });
 
     const { data: filterStats } = useSWR<FilterStats>(
         session ? '/api/filter-stats' : null,
@@ -66,6 +52,56 @@ export default function ListeningHistory() {
 
     const formatDateTime = (dateString: string) => {
         return new Date(dateString).toLocaleString();
+    };
+
+    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
+        key: 'playedAt',
+        direction: 'desc',
+    });
+
+    const sortedHistory = useMemo(() => {
+        if (!data?.history) return [];
+        const sorted = [...data.history];
+        sorted.sort((a, b) => {
+            if (a[sortConfig.key] < b[sortConfig.key]) {
+                return sortConfig.direction === 'asc' ? -1 : 1;
+            }
+            if (a[sortConfig.key] > b[sortConfig.key]) {
+                return sortConfig.direction === 'asc' ? 1 : -1;
+            }
+            return 0;
+        });
+        return sorted;
+    }, [data?.history, sortConfig]);
+
+    const requestSort = (key: string) => {
+        let direction: 'asc' | 'desc' = 'asc';
+        if (sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const setQuickDateRange = (type: 'week' | 'month' | 'year') => {
+        const now = new Date();
+        let startDate;
+        switch (type) {
+            case 'week':
+                startDate = new Date(now.setDate(now.getDate() - 7));
+                break;
+            case 'month':
+                startDate = new Date(now.setMonth(now.getMonth() - 1));
+                break;
+            case 'year':
+                startDate = new Date(now.setFullYear(now.getFullYear() - 1));
+                break;
+            default:
+                startDate = new Date();
+        }
+        setDateRange({
+            startDate: startDate.toISOString().split('T')[0],
+            endDate: new Date().toISOString().split('T')[0]
+        });
     };
 
     if (!session) return null;
@@ -89,25 +125,30 @@ export default function ListeningHistory() {
             {/* Date Range Filters */}
             <div className="mb-6">
                 <p className="text-sm text-spotify-grey mb-2">Select date range (inclusive)</p>
+                <div className="flex gap-4 mb-4">
+                    <button onClick={() => setQuickDateRange('week')} className="bg-spotify-green text-black px-3 py-1 rounded">Last Week</button>
+                    <button onClick={() => setQuickDateRange('month')} className="bg-spotify-green text-black px-3 py-1 rounded">Last Month</button>
+                    <button onClick={() => setQuickDateRange('year')} className="bg-spotify-green text-black px-3 py-1 rounded">Last Year</button>
+                </div>
                 <div className="flex gap-4">
                     <div>
                         <label className="block text-sm mb-1">Start Date</label>
-                        <input
-                            type="date"
-                            value={dateRange.startDate}
-                            onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                        <ReactDatePicker
+                            selected={new Date(dateRange.startDate)}
+                            onChange={(date) => setDateRange(prev => ({ ...prev, startDate: date.toISOString().split('T')[0] }))}
                             className="bg-spotify-dark-grey rounded p-2"
                             disabled={isLoading || isValidating}
+                            dateFormat="yyyy-MM-dd"
                         />
                     </div>
                     <div>
                         <label className="block text-sm mb-1">End Date</label>
-                        <input
-                            type="date"
-                            value={dateRange.endDate}
-                            onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                        <ReactDatePicker
+                            selected={new Date(dateRange.endDate)}
+                            onChange={(date) => setDateRange(prev => ({ ...prev, endDate: date.toISOString().split('T')[0] }))}
                             className="bg-spotify-dark-grey rounded p-2"
                             disabled={isLoading || isValidating}
+                            dateFormat="yyyy-MM-dd"
                         />
                     </div>
                 </div>
@@ -164,80 +205,61 @@ export default function ListeningHistory() {
                         exit={{ opacity: 0 }}
                         className="relative"
                     >
-                        {/* Stats Cards */}
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                            <div className="bg-spotify-dark-grey p-4 rounded-lg">
-                                <h3 className="text-sm text-spotify-grey">Total Tracks</h3>
-                                <p className="text-2xl font-bold">{data.stats.totalTracks}</p>
-                            </div>
-                            <div className="bg-spotify-dark-grey p-4 rounded-lg">
-                                <h3 className="text-sm text-spotify-grey">Unique Tracks</h3>
-                                <p className="text-2xl font-bold">{data.stats.uniqueTracks}</p>
-                            </div>
-                            <div className="bg-spotify-dark-grey p-4 rounded-lg">
-                                <h3 className="text-sm text-spotify-grey">Unique Artists</h3>
-                                <p className="text-2xl font-bold">{data.stats.uniqueArtists}</p>
-                            </div>
-                            <div className="bg-spotify-dark-grey p-4 rounded-lg">
-                                <h3 className="text-sm text-spotify-grey">Total Listening Time</h3>
-                                <p className="text-2xl font-bold">
-                                    {Math.floor(data.stats.totalDuration._sum.duration / 3600000)}h {Math.floor((data.stats.totalDuration._sum.duration % 3600000) / 60000)}m
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* History List */}
-                        <div className="space-y-2">
-                            {data.history
-                                .filter(item => {
-                                    // Apply filters
-                                    if (filters.searchQuery) {
-                                        const query = filters.searchQuery.toLowerCase();
-                                        if (!item.trackName.toLowerCase().includes(query) &&
-                                            !item.artistName.toLowerCase().includes(query)) {
-                                            return false;
-                                        }
-                                    }
-
-                                    if (filters.genres.length && 
-                                        !filters.genres.some(g => item.genres.includes(g))) {
-                                        return false;
-                                    }
-
-                                    if (filters.timeOfDay.length) {
-                                        const hour = new Date(item.playedAt).getHours();
-                                        const timeOfDay = 
-                                            hour < 6 ? 'night' :
-                                            hour < 12 ? 'morning' :
-                                            hour < 18 ? 'afternoon' : 'evening';
-                                        if (!filters.timeOfDay.includes(timeOfDay)) {
-                                            return false;
-                                        }
-                                    }
-
-                                    if (item.duration < filters.duration.min || 
-                                        item.duration > filters.duration.max) {
-                                        return false;
-                                    }
-
-                                    return true;
-                                })
-                                .map((item) => (
-                                    <div 
-                                        key={`${item.trackId}-${item.playedAt}`}
-                                        className="flex items-center gap-4 p-3 bg-spotify-dark-grey rounded-lg hover:bg-opacity-70 transition-colors"
+                        {/* History Table */}
+                        <table className="min-w-full bg-spotify-dark-grey rounded-lg">
+                            <thead>
+                                <tr className="bg-[#1DB954] text-black">
+                                    <th
+                                        className="p-4 text-left cursor-pointer hover:text-gray-700"
+                                        onClick={() => requestSort('trackName')}
                                     >
-                                        <div className="flex-grow">
-                                            <h3 className="font-semibold">{item.trackName}</h3>
-                                            <p className="text-sm text-spotify-grey">{item.artistName} • {item.albumName}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-sm text-spotify-grey">{formatDateTime(item.playedAt)}</p>
-                                            <p className="text-xs text-spotify-grey">{formatDuration(item.duration)}</p>
-                                        </div>
-                                    </div>
+                                        Track Name
+                                    </th>
+                                    <th
+                                        className="p-4 text-left cursor-pointer hover:text-gray-700"
+                                        onClick={() => requestSort('artistName')}
+                                    >
+                                        Artist
+                                    </th>
+                                    <th
+                                        className="p-4 text-left cursor-pointer hover:text-gray-700"
+                                        onClick={() => requestSort('albumName')}
+                                    >
+                                        Album
+                                    </th>
+                                    <th
+                                        className="p-4 text-left cursor-pointer hover:text-gray-700"
+                                        onClick={() => requestSort('genres')}
+                                    >
+                                        Genres
+                                    </th>
+                                    <th
+                                        className="p-4 text-left cursor-pointer hover:text-gray-700"
+                                        onClick={() => requestSort('playedAt')}
+                                    >
+                                        Played At
+                                    </th>
+                                    <th
+                                        className="p-4 text-left cursor-pointer hover:text-gray-700"
+                                        onClick={() => requestSort('duration')}
+                                    >
+                                        Duration
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sortedHistory.map((item) => (
+                                    <tr key={`${item.trackId}-${item.playedAt}`} className="hover:bg-opacity-70 transition-colors">
+                                        <td className="p-4">{item.trackName}</td>
+                                        <td className="p-4">{item.artistName}</td>
+                                        <td className="p-4">{item.albumName}</td>
+                                        <td className="p-4">{item.genres.join(', ')}</td>
+                                        <td className="p-4">{formatDateTime(item.playedAt)}</td>
+                                        <td className="p-4">{formatDuration(item.duration)}</td>
+                                    </tr>
                                 ))}
-                        </div>
+                            </tbody>
+                        </table>
 
                         {/* Pagination */}
                         <div className="mt-6 flex justify-center gap-2">
