@@ -20,10 +20,12 @@
     "next-auth": "^4.24.11",
     "react": "^18.2.0",
     "react-apexcharts": "^1.7.0",
+    "react-calendar-heatmap": "^1.9.0",
     "react-chartjs-2": "^5.2.0",
     "react-datepicker": "^7.5.0",
     "react-dom": "^18.2.0",
     "react-icons": "^5.4.0",
+    "react-tooltip": "^5.28.0",
     "recharts": "^2.14.1",
     "swr": "^2.2.5",
     "TagCloud": "^2.5.0"
