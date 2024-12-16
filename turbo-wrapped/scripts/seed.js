@@ -3,7 +3,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 // Replace this with your actual user ID from Prisma Studio
-const YOUR_USER_ID = 'cm4r6t3a20000qnhjtsqj8pz4';
+const YOUR_USER_ID = process.env.MY_USER_ID;
 
 const MUSICBRAINZ_APP = {
     name: process.env.MUSICBRAINZ_APP_NAME || 'TurboWrapped-Dev',

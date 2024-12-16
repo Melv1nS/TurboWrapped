@@ -39,10 +39,6 @@ export function ArtistWorldMap({ locations, userArtists }: Props) {
     // Add a default empty Set if userArtists is undefined
     const safeUserArtists = userArtists || new Set<string>();
 
-    // Add these console logs near the start of the component
-    console.log("Total locations:", locations?.length);
-    console.log("User artists:", Array.from(safeUserArtists));
-
     // Filter locations to only include artists the user has listened to
     const filteredLocations = useMemo(() => {
         const filtered = locations.filter(location => safeUserArtists.has(location.artistName));
@@ -74,7 +70,6 @@ export function ArtistWorldMap({ locations, userArtists }: Props) {
             return acc;
         }, {} as Record<string, string[]>);
         
-        console.log("Grouped artists by country:", grouped);
         return grouped;
     }, [filteredLocations]);
 
@@ -86,7 +81,6 @@ export function ArtistWorldMap({ locations, userArtists }: Props) {
         }, {} as Record<string, number>);
 
         const maxCount = Math.max(...Object.values(counts));
-        console.log("Country counts:", counts);
         return { counts, maxCount };
     }, [artistsByCountry]);
 
@@ -96,8 +90,6 @@ export function ArtistWorldMap({ locations, userArtists }: Props) {
         .range(["#2C3333", "#1DB954"]);
 
     const handleCountryClick = (countryName: string, count: number) => {
-        console.log("Country clicked:", countryName);
-        console.log("Artists:", artistsByCountry[countryName]);
         
         if (count > 0) {
             setSelectedCountry({
