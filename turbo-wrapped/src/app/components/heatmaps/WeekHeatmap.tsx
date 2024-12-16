@@ -19,7 +19,11 @@ interface PatternData {
 }
 
 export function WeekHeatmap({ data }: { data: PatternData }) {
-    const [currentDate, setCurrentDate] = useState(() => new Date());
+    const [currentDate, setCurrentDate] = useState(() => {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        return yesterday;
+    });
 
     const navigateWeek = (direction: 'prev' | 'next') => {
         setCurrentDate(prevDate => {
@@ -36,7 +40,7 @@ export function WeekHeatmap({ data }: { data: PatternData }) {
     // Calculate week range
     const endDate = new Date(currentDate);
     const startDate = new Date(currentDate);
-    startDate.setDate(endDate.getDate() - 6); // Start from 6 days before to include current day
+    startDate.setDate(endDate.getDate() - 6); // Start from 7 days before yesterday
 
     // Filter data for the selected week
     const filteredData = data.history.filter(item => {
@@ -57,19 +61,31 @@ export function WeekHeatmap({ data }: { data: PatternData }) {
         durationData[day][hour] += item.duration;
     });
 
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const hours = Array.from({ length: 24 }, (_, i) => 
         i === 0 ? '12am' : i === 12 ? '12pm' : i > 12 ? `${i-12}pm` : `${i}am`
     );
 
     const maxValue = Math.max(...heatmapData.flat());
 
-    const series = days.map((day, dayIndex) => ({
-        name: day,
-        data: heatmapData[dayIndex].map((value, hourIndex) => ({
+    const getDayLabel = (date: Date) => {
+        return `${date.toLocaleDateString('en-US', { weekday: 'short' })}, ${date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}`;
+    };
+
+    // Generate array of dates for the week
+    const dateArray = Array.from({ length: 7 }, (_, i) => {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+        return date;
+    });
+
+    const displayDays = dateArray.map(date => getDayLabel(date));
+
+    const series = dateArray.map((date, index) => ({
+        name: getDayLabel(date),
+        data: heatmapData[date.getDay()].map((value, hourIndex) => ({
             x: hours[hourIndex],
             y: value,
-            duration: durationData[dayIndex][hourIndex]
+            duration: durationData[date.getDay()][hourIndex]
         }))
     }));
 
@@ -119,7 +135,8 @@ export function WeekHeatmap({ data }: { data: PatternData }) {
                     fontSize: '12px'
                 },
                 offsetX: -10
-            }
+            },
+            categories: displayDays
         },
         grid: {
             show: false,
@@ -158,7 +175,7 @@ export function WeekHeatmap({ data }: { data: PatternData }) {
 
                 const value = w.globals.series[seriesIndex][dataPointIndex];
                 const duration = durationData[seriesIndex][dataPointIndex];
-                const day = days[seriesIndex];
+                const day = displayDays[seriesIndex];
                 const hour = hours[dataPointIndex];
 
                 return (

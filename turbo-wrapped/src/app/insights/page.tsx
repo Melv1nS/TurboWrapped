@@ -1,7 +1,6 @@
 'use client';
 import { useSession } from 'next-auth/react';
 import useSWR from 'swr';
-import { useState } from 'react';
 import { Heatmaps } from '@/app/components/heatmaps/Heatmaps';
 import { useRouter } from 'next/navigation';
 import { ArrowLeftIcon } from '@heroicons/react/24/solid';

@@ -102,10 +102,7 @@ export function MonthHeatmap({ data }: { data: PatternData }) {
                         key={i}
                         className={`aspect-square p-1 relative ${getColorClass(day.count)}`}
                         data-tooltip-id="calendar-tooltip"
-                        data-tooltip-content={`${day.date.toLocaleDateString('en-US', { 
-                            month: 'short', 
-                            day: 'numeric' 
-                        })}: ${day.count} plays`}
+                        data-tooltip-content={`${day.count} songs played`}
                     >
                         <span className="absolute top-1 left-1 text-xs">
                             {i + 1}
