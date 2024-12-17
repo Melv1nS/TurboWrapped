@@ -69,6 +69,14 @@ export default function Home() {
             
             {/* All cards in one grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl">
+              {/* Spotify API Section */}
+              <div className="md:col-span-3 text-gray-400 text-sm bg-spotify-dark-elevated/50 p-4 rounded-lg mb-6">
+                <p className="leading-relaxed">
+                  The following sections show your top artists, tracks, and genres based on data directly from Spotify's API.
+                  These reflect your all-time listening patterns on Spotify across all devices.
+                </p>
+              </div>
+
               {/* Top Artists Card */}
               <div 
                 className="group bg-spotify-dark-elevated p-6 rounded-xl hover:bg-spotify-dark-highlight 
@@ -172,6 +180,15 @@ export default function Home() {
                     </svg>
                   </div>
                 </div>
+              </div>
+
+              {/* Tracking-based features section */}
+              <div className="md:col-span-3 text-gray-400 text-sm bg-spotify-dark-elevated/50 p-4 rounded-lg mb-6">
+                <p className="leading-relaxed">
+                  The following features are built using your listening history, which begins collecting data from the moment you enable tracking.
+                  Unlike the sections above, these insights are based on your listening activity specifically tracked by Turbo Wrapped.
+                  As you continue to listen, these features will become more detailed and provide increasingly meaningful insights into your listening patterns over time.
+                </p>
               </div>
 
               {/* History Card */}
