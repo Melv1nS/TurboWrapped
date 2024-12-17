@@ -14,12 +14,19 @@ interface ListeningHistoryItem {
 
 interface PatternData {
     history: ListeningHistoryItem[];
+    uniqueArtists?: string[];
+    stats?: any;
+    pagination?: any;
 }
 
 export function Heatmaps({ data }: { data: PatternData }) {
     const [timeRange, setTimeRange] = useState<'week' | 'month' | 'year'>('month');
 
     const getFilteredData = (range: 'week' | 'month' | 'year'): PatternData => {
+        if (!data?.history) {
+            return { history: [] };
+        }
+
         const now = new Date();
         const startDate = new Date();
 

@@ -4,8 +4,6 @@ import { useTrackingState } from '../hooks/useTrackingState';
 export default function TrackingToggle() {
   const { isEnabled, toggleTracking } = useTrackingState();
   
-  console.log('TrackingToggle isEnabled:', isEnabled);
-
   return (
     <div className="bg-spotify-dark-elevated p-6 rounded-xl">
       <div className="flex items-center justify-between">

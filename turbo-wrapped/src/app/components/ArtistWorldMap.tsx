@@ -39,10 +39,25 @@ export function ArtistWorldMap({ locations, userArtists }: Props) {
     // Add a default empty Set if userArtists is undefined
     const safeUserArtists = userArtists || new Set<string>();
 
+    // Add console.log to debug
+    console.log('Total locations received:', locations.length);
+    console.log('Total user artists:', safeUserArtists.size);
+
     // Filter locations to only include artists the user has listened to
     const filteredLocations = useMemo(() => {
-        const filtered = locations.filter(location => safeUserArtists.has(location.artistName));
-        console.log("Filtered locations:", filtered.length);
+        console.log('Filtering locations...');
+        console.log('All locations:', locations);
+        console.log('User artists:', Array.from(safeUserArtists));
+        
+        const filtered = locations.filter(location => {
+            const hasArtist = safeUserArtists.has(location.artistName);
+            if (!hasArtist) {
+                console.log('Filtered out:', location.artistName);
+            }
+            return hasArtist;
+        });
+        
+        console.log('Filtered locations:', filtered);
         return filtered;
     }, [locations, safeUserArtists]);
 
@@ -101,7 +116,14 @@ export function ArtistWorldMap({ locations, userArtists }: Props) {
 
     return (
         <div className="flex flex-col h-full">
-            <div className="relative w-full h-[500px]">
+            <div className="text-spotify-grey text-sm mb-2 flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                </svg>
+                <span>Drag to pan • Scroll or pinch to zoom</span>
+            </div>
+
+            <div className="relative w-full h-[500px] cursor-move">
                 <ComposableMap
                     projection="geoEqualEarth"
                     style={{
@@ -110,6 +132,25 @@ export function ArtistWorldMap({ locations, userArtists }: Props) {
                     }}
                 >
                     <ZoomableGroup>
+                        <div className="absolute right-4 top-4 flex flex-col gap-2 bg-spotify-dark-elevated rounded-lg shadow-lg">
+                            <button 
+                                className="p-2 text-white hover:bg-spotify-dark-highlight transition-colors"
+                                onClick={() => {/* Add zoom in handler */}}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                            </button>
+                            <button 
+                                className="p-2 text-white hover:bg-spotify-dark-highlight transition-colors border-t border-spotify-dark-highlight"
+                                onClick={() => {/* Add zoom out handler */}}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                                </svg>
+                            </button>
+                        </div>
+
                         <Geographies geography={geoData}>
                             {({ geographies }) =>
                                 geographies.map((geo) => {

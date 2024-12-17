@@ -23,8 +23,8 @@ export default function Insights() {
         fetcher
     );
 
-    // Create a Set of artist names from listening history
-    const userArtists = new Set(listeningHistory?.history?.map(item => item.artistName) || []);
+    // Create a Set of artist names from the complete history
+    const userArtists = new Set(listeningHistory?.uniqueArtists || []);
 
     if (!session) {
         return (
