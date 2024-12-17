@@ -6,10 +6,9 @@ import useSWR from 'swr';
 import BackButton from '../components/BackButton';
 import ReactDatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 import type {
     TrackingPreferences,
-    FilterStats,
-    Filters,
     ListeningHistoryResponse
 } from './types';
 
@@ -33,26 +32,9 @@ export default function ListeningHistory() {
     );
 
     const { data, error, isLoading, isValidating } = useSWR<ListeningHistoryResponse>(
-        session ? 
-        `/api/listening-history?page=${page}&startDate=${dateRange.startDate}&endDate=${dateRange.endDate}` 
-        : null,
+        session ? `/api/listening-history?page=${page}&startDate=${dateRange.startDate}&endDate=${dateRange.endDate}` : null,
         fetcher
     );
-
-    const { data: filterStats } = useSWR<FilterStats>(
-        session ? '/api/filter-stats' : null,
-        fetcher
-    );
-
-    const formatDuration = (ms: number) => {
-        const minutes = Math.floor(ms / 60000);
-        const seconds = Math.floor((ms % 60000) / 1000);
-        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    };
-
-    const formatDateTime = (dateString: string) => {
-        return new Date(dateString).toLocaleString();
-    };
 
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
         key: 'playedAt',
@@ -80,6 +62,17 @@ export default function ListeningHistory() {
             direction = 'desc';
         }
         setSortConfig({ key, direction });
+    };
+
+    const formatDuration = (ms: number) => {
+        const minutes = Math.floor(ms / 60000);
+        const seconds = Math.floor((ms % 60000) / 1000);
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    };
+
+    const formatDateTime = (dateString: string) => {
+        const date = new Date(dateString);
+        return date.toLocaleString();
     };
 
     const setQuickDateRange = (type: 'week' | 'month' | 'year') => {
@@ -173,14 +166,7 @@ export default function ListeningHistory() {
                         exit={{ opacity: 0 }}
                         className="space-y-4"
                     >
-                        {/* Stats Cards Skeleton */}
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                            {[...Array(4)].map((_, i) => (
-                                <div key={i} className="bg-spotify-dark-grey/50 p-4 rounded-lg animate-pulse h-24" />
-                            ))}
-                        </div>
-                        
-                        {/* History List Skeleton */}
+                        {/* Loading skeleton */}
                         {[...Array(5)].map((_, i) => (
                             <div 
                                 key={i}
@@ -203,93 +189,92 @@ export default function ListeningHistory() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="relative"
                     >
-                        {/* History Table */}
-                        <table className="min-w-full bg-spotify-dark-grey rounded-lg">
-                            <thead>
-                                <tr className="bg-[#1DB954] text-black">
-                                    <th
-                                        className="p-4 text-left cursor-pointer hover:text-gray-700"
-                                        onClick={() => requestSort('trackName')}
-                                    >
-                                        Track Name
-                                    </th>
-                                    <th
-                                        className="p-4 text-left cursor-pointer hover:text-gray-700"
-                                        onClick={() => requestSort('artistName')}
-                                    >
-                                        Artist
-                                    </th>
-                                    <th
-                                        className="p-4 text-left cursor-pointer hover:text-gray-700"
-                                        onClick={() => requestSort('albumName')}
-                                    >
-                                        Album
-                                    </th>
-                                    <th
-                                        className="p-4 text-left cursor-pointer hover:text-gray-700"
-                                        onClick={() => requestSort('genres')}
-                                    >
-                                        Genres
-                                    </th>
-                                    <th
-                                        className="p-4 text-left cursor-pointer hover:text-gray-700"
-                                        onClick={() => requestSort('playedAt')}
-                                    >
-                                        Played At
-                                    </th>
-                                    <th
-                                        className="p-4 text-left cursor-pointer hover:text-gray-700"
-                                        onClick={() => requestSort('duration')}
-                                    >
-                                        Duration
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {sortedHistory.map((item) => (
-                                    <tr key={`${item.trackId}-${item.playedAt}`} className="hover:bg-opacity-70 transition-colors">
-                                        <td className="p-4">{item.trackName}</td>
-                                        <td className="p-4">{item.artistName}</td>
-                                        <td className="p-4">{item.albumName}</td>
-                                        <td className="p-4">{item.genres.join(', ')}</td>
-                                        <td className="p-4">{formatDateTime(item.playedAt)}</td>
-                                        <td className="p-4">{formatDuration(item.duration)}</td>
+                        <div className="bg-spotify-dark-grey rounded-lg overflow-hidden">
+                            <table className="min-w-full">
+                                <thead>
+                                    <tr className="bg-[#1DB954] text-black">
+                                        <th className="p-4 text-left cursor-pointer hover:text-gray-700" onClick={() => requestSort('trackName')}>Track Name</th>
+                                        <th className="p-4 text-left cursor-pointer hover:text-gray-700" onClick={() => requestSort('artistName')}>Artist</th>
+                                        <th className="p-4 text-left cursor-pointer hover:text-gray-700" onClick={() => requestSort('albumName')}>Album</th>
+                                        <th className="p-4 text-left cursor-pointer hover:text-gray-700" onClick={() => requestSort('genres')}>Genres</th>
+                                        <th className="p-4 text-left cursor-pointer hover:text-gray-700" onClick={() => requestSort('playedAt')}>Played At</th>
+                                        <th className="p-4 text-left cursor-pointer hover:text-gray-700" onClick={() => requestSort('duration')}>Duration</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-
-                        {/* Pagination */}
-                        <div className="mt-6 flex justify-center gap-2">
-                            {data?.pagination.pages && Array.from({ length: data.pagination.pages }, (_, i) => (
-                                <button
-                                    key={i + 1}
-                                    onClick={() => setPage(i + 1)}
-                                    className={`px-3 py-1 rounded ${
-                                        page === i + 1 
-                                            ? 'bg-spotify-green text-black' 
-                                            : 'bg-spotify-dark-grey text-white'
-                                    }`}
-                                    disabled={isValidating}
-                                >
-                                    {i + 1}
-                                </button>
-                            ))}
+                                </thead>
+                                <tbody>
+                                    {sortedHistory.map((item) => (
+                                        <tr key={`${item.trackId}-${item.playedAt}`} className="hover:bg-opacity-70 transition-colors">
+                                            <td className="p-4">{item.trackName}</td>
+                                            <td className="p-4">{item.artistName}</td>
+                                            <td className="p-4">{item.albumName}</td>
+                                            <td className="p-4">{item.genres.join(', ')}</td>
+                                            <td className="p-4">{formatDateTime(item.playedAt)}</td>
+                                            <td className="p-4">{formatDuration(item.duration)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
 
-                        {/* Loading Overlay */}
-                        {isValidating && (
-                            <motion.div 
-                                className="absolute inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
+                        <div className="mt-6 flex justify-center items-center gap-2">
+                            <button
+                                onClick={() => setPage(page - 1)}
+                                disabled={page === 1 || isValidating}
+                                className={`p-1 rounded ${
+                                    page === 1 
+                                        ? 'bg-spotify-dark-grey text-spotify-grey cursor-not-allowed' 
+                                        : 'bg-spotify-dark-grey text-white hover:bg-opacity-70'
+                                }`}
+                                aria-label="Previous page"
                             >
-                                <div className="w-8 h-8 border-2 border-t-green-500 border-opacity-50 rounded-full animate-spin" />
-                            </motion.div>
-                        )}
+                                <ChevronLeftIcon className="h-5 w-5" />
+                            </button>
+
+                            {data?.pagination.pages && Array.from({ length: data.pagination.pages }, (_, i) => {
+                                if (
+                                    i === 0 || // First page
+                                    i === data.pagination.pages - 1 || // Last page
+                                    i === page - 1 || // Current page
+                                    i === page - 2 || // One before current
+                                    i === page // One after current
+                                ) {
+                                    return (
+                                        <button
+                                            key={i + 1}
+                                            onClick={() => setPage(i + 1)}
+                                            className={`px-3 py-1 rounded min-w-[32px] ${
+                                                page === i + 1 
+                                                    ? 'bg-spotify-green text-black' 
+                                                    : 'bg-spotify-dark-grey text-white hover:bg-opacity-70'
+                                            }`}
+                                            disabled={isValidating}
+                                        >
+                                            {i + 1}
+                                        </button>
+                                    );
+                                } else if (
+                                    i === 1 || // Show ellipsis after first page
+                                    i === data.pagination.pages - 2 // Show ellipsis before last page
+                                ) {
+                                    return <span key={`ellipsis-${i}`} className="text-spotify-grey">...</span>;
+                                }
+                                return null;
+                            })}
+
+                            <button
+                                onClick={() => setPage(page + 1)}
+                                disabled={!data?.pagination.pages || page === data.pagination.pages || isValidating}
+                                className={`p-1 rounded ${
+                                    !data?.pagination.pages || page === data.pagination.pages
+                                        ? 'bg-spotify-dark-grey text-spotify-grey cursor-not-allowed'
+                                        : 'bg-spotify-dark-grey text-white hover:bg-opacity-70'
+                                }`}
+                                aria-label="Next page"
+                            >
+                                <ChevronRightIcon className="h-5 w-5" />
+                            </button>
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>
