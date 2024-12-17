@@ -59,8 +59,11 @@ export async function GET(request: Request) {
                 for (const item of data.items) {
                     const artistId = item.track.artists[0].id;
                     
+                    // Add this before the Promise.all
+                    console.log(`Processing artist: ${item.track.artists[0].name} (${artistId})`);
+
                     // Process artist location in parallel with other operations
-                    await Promise.all([
+                    const [locationResult, artistResponse] = await Promise.all([
                         getOrCreateArtistLocation(artistId, item.track.artists[0].name),
                         // Fetch artist details to get genres
                         fetch(
@@ -73,9 +76,12 @@ export async function GET(request: Request) {
                         )
                     ]);
 
-                    const artistResponse = await artistResponsePromise;
                     const artistData = await artistResponse.json();
                     const genres = artistResponse.ok ? artistData.genres : [];
+
+                    // Add this after the Promise.all
+                    console.log(`Location result:`, locationResult);
+                    console.log(`Artist genres:`, genres);
 
                     await prisma.listeningHistory.upsert({
                         where: {
