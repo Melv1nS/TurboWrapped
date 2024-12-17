@@ -130,7 +130,50 @@ export default function TopTracks() {
     }
 
     if (!data) {
-        return <div className="text-center p-4">Loading your top tracks...</div>;
+        return (
+            <div className="p-6 bg-spotify-black min-h-screen">
+                <div className="flex justify-between items-center mb-6">
+                    <BackButton />
+                    <h2 className="text-2xl font-bold text-spotify-white">Your Top Tracks</h2>
+                    <div className="w-32 h-10 bg-spotify-dark-grey animate-pulse rounded-md" />
+                </div>
+
+                {/* Stats Grid Skeleton */}
+                <div className="mb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {[...Array(4)].map((_, i) => (
+                        <div key={i} className="bg-spotify-dark-grey p-4 rounded-lg">
+                            <div className="h-7 w-32 bg-spotify-dark-highlight animate-pulse rounded mb-3" />
+                            <div className="space-y-2">
+                                {[...Array(5)].map((_, j) => (
+                                    <div key={j} className="flex justify-between items-center">
+                                        <div className="w-32 h-4 bg-spotify-dark-highlight animate-pulse rounded" />
+                                        <div className="w-16 h-4 bg-spotify-dark-highlight animate-pulse rounded" />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Tracks List Skeleton */}
+                <div className="space-y-4">
+                    {[...Array(20)].map((_, i) => (
+                        <div 
+                            key={i}
+                            className="flex items-center space-x-4 p-3 rounded-lg bg-spotify-dark-grey/20"
+                        >
+                            <div className="w-6 h-4 bg-spotify-dark-grey animate-pulse rounded" />
+                            <div className="w-[50px] h-[50px] bg-spotify-dark-grey animate-pulse rounded-md" />
+                            <div className="flex-grow">
+                                <div className="w-48 h-5 bg-spotify-dark-grey animate-pulse rounded mb-2" />
+                                <div className="w-32 h-4 bg-spotify-dark-grey animate-pulse rounded" />
+                            </div>
+                            <div className="w-12 h-4 bg-spotify-dark-grey animate-pulse rounded" />
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
     }
 
     if (error) {

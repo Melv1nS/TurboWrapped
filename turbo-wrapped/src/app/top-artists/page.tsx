@@ -78,7 +78,50 @@ export default function TopArtists() {
     }
 
     if (!data) {
-        return <div className="text-center p-4">Loading your top artists...</div>;
+        return (
+            <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                    <BackButton />
+                    <h2 className="text-2xl font-bold">Your Top Artists</h2>
+                    <div className="w-32 h-10 bg-spotify-dark-grey animate-pulse rounded-md" />
+                </div>
+                
+                {/* Stats Section Skeleton */}
+                <div className="mb-8 bg-opacity-10 bg-white rounded-lg p-4">
+                    <div className="h-7 w-48 bg-spotify-dark-grey animate-pulse rounded mb-3" />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {[...Array(3)].map((_, i) => (
+                            <div key={i} className="text-center">
+                                <div className="h-4 w-32 mx-auto bg-spotify-dark-grey animate-pulse rounded mb-2" />
+                                <div className="h-8 w-24 mx-auto bg-spotify-dark-grey animate-pulse rounded" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Artist Cards Grid Skeleton */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    {[...Array(10)].map((_, i) => (
+                        <div 
+                            key={i} 
+                            className="flex flex-col items-center p-4 rounded-lg bg-spotify-dark-grey/20"
+                        >
+                            <div className="relative">
+                                <div className="w-40 h-40 rounded-full bg-spotify-dark-grey animate-pulse" />
+                                <div className="absolute -top-2 -left-2 w-8 h-8 bg-spotify-dark-grey animate-pulse rounded-full" />
+                            </div>
+                            <div className="w-32 h-6 bg-spotify-dark-grey animate-pulse rounded mt-3" />
+                            <div className="w-full mt-2 mb-1">
+                                <div className="w-24 h-3 bg-spotify-dark-grey animate-pulse rounded mb-1" />
+                                <div className="w-full h-2 bg-spotify-dark-grey animate-pulse rounded-full" />
+                            </div>
+                            <div className="w-28 h-4 bg-spotify-dark-grey animate-pulse rounded mt-2" />
+                            <div className="w-36 h-4 bg-spotify-dark-grey animate-pulse rounded mt-2" />
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
     }
 
     if (error) {
