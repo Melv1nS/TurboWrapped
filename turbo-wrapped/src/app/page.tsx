@@ -73,7 +73,10 @@ export default function Home() {
               <div className="md:col-span-3 text-gray-400 text-sm bg-spotify-dark-elevated/50 p-4 rounded-lg mb-6">
                 <p className="leading-relaxed">
                   The following sections show your top artists, tracks, and genres based on data directly from Spotify's API.
-                  These reflect your all-time listening patterns on Spotify across all devices.
+                  These reflect your all-time listening patterns on Spotify across all devices. However, Spotify's API only
+                  provides limited snapshots of your top items and doesn't reveal detailed listening history or exact play counts.
+                  This means we can show your favorites, but can't provide deeper insights like when you discovered an artist
+                  or how your taste has evolved over specific time periods.
                 </p>
               </div>
 

@@ -5,7 +5,12 @@ import AuthProvider from "./components/AuthProvider";
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Analytics } from "@vercel/analytics/react"
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ 
+  subsets: ["latin"],
+  preload: true,
+  display: 'swap',  // Ensures text remains visible during webfont load
+  adjustFontFallback: true  // Automatically adjusts the font metrics to prevent layout shift
+});
 
 export const metadata: Metadata = {
   title: "TurboWrapped",
