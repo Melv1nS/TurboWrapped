@@ -31,6 +31,42 @@ export async function GET(request: Request) {
             if (!spotifyAccount?.access_token) continue;
 
             try {
+                // Add token refresh logic
+                if (spotifyAccount.expires_at * 1000 < Date.now()) {
+                    const response = await fetch('https://accounts.spotify.com/api/token', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            Authorization: `Basic ${Buffer.from(
+                                `${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`
+                            ).toString('base64')}`,
+                        },
+                        body: new URLSearchParams({
+                            grant_type: 'refresh_token',
+                            refresh_token: spotifyAccount.refresh_token!,
+                        }),
+                    });
+
+                    const tokens = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(`Failed to refresh token: ${tokens.error}`);
+                    }
+
+                    // Update the account with new tokens
+                    await prisma.account.update({
+                        where: { id: spotifyAccount.id },
+                        data: {
+                            access_token: tokens.access_token,
+                            expires_at: Math.floor(Date.now() / 1000 + tokens.expires_in),
+                            token_type: tokens.token_type,
+                        },
+                    });
+
+                    // Update the access token for current execution
+                    spotifyAccount.access_token = tokens.access_token;
+                }
+
                 // Get last tracked song for this user
                 const lastTrack = await prisma.listeningHistory.findFirst({
                     where: { userId: user.id },
