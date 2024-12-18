@@ -174,20 +174,6 @@ async function refreshAccessToken(token) {
 
 const handler = NextAuth(OPTIONS);
 
-// Export the handler with rate limit headers
-export async function GET(request: Request) {
-  const response = await handler(request);
-  
-  // Add rate limit headers if available from the limiter
-  const ip = request.headers.get('x-forwarded-for');
-  if (ip) {
-    const { success, remaining, limit, resetIn } = await limiter.check(ip);
-    response.headers.set('X-RateLimit-Remaining', remaining.toString());
-    response.headers.set('X-RateLimit-Limit', limit.toString());
-    response.headers.set('X-RateLimit-Reset', resetIn.toString());
-  }
-
-  return response;
-}
-
-export { handler as POST };
+// Export the handler directly using the new Next.js Edge Runtime format
+export const GET = handler;
+export const POST = handler;

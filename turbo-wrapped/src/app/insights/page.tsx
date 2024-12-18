@@ -3,7 +3,7 @@ import { useSession } from 'next-auth/react';
 import useSWR from 'swr';
 import { ArrowLeftIcon } from '@heroicons/react/24/solid';
 import { useRouter } from 'next/navigation';
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 // Fix lazy imports by using dynamic import with proper type handling
@@ -16,6 +16,12 @@ const Heatmaps = lazy(() =>
 const ArtistWorldMap = lazy(() => 
     import('../components/charts/ArtistWorldMap').then(mod => ({
         default: mod.ArtistWorldMap
+    }))
+);
+
+const PersonalityInsights = lazy(() => 
+    import('../components/PersonalityInsights').then(mod => ({
+        default: mod.PersonalityInsights
     }))
 );
 
@@ -34,8 +40,15 @@ const fetcher = (url: string) =>
     }).then((res) => res.json());
 
 export default function Insights() {
+    const { data: session, status } = useSession();
     const router = useRouter();
-    const { data: session } = useSession();
+
+    // Handle authentication with useEffect
+    useEffect(() => {
+        if (status === 'unauthenticated') {
+            router.push('/');
+        }
+    }, [status, router]);
 
     const { data: listeningHistory, error: historyError, isLoading: historyLoading } = useSWR(
         session ? '/api/listening-history' : null,
@@ -49,14 +62,26 @@ export default function Insights() {
         swrConfig
     );
 
+    const { data: personalityData, error: personalityError, isLoading: personalityLoading } = useSWR(
+        session ? '/api/personality-insights' : null,
+        fetcher
+    );
+
+    // Add logging to debug
+    console.log("Personality Data:", personalityData);
+    console.log("Personality Error:", personalityError);
+    console.log("Personality Loading:", personalityLoading);
+
     const userArtists = new Set(listeningHistory?.uniqueArtists || []);
 
+    // Show loading state while checking authentication
+    if (status === 'loading') {
+        return <LoadingSpinner />;
+    }
+
+    // Don't render content until we confirm authentication
     if (!session) {
-        return (
-            <div className="min-h-[200px] p-6 text-center">
-                <p>Please log in to view your insights.</p>
-            </div>
-        );
+        return null;
     }
 
     return (
@@ -70,6 +95,26 @@ export default function Insights() {
                     <ArrowLeftIcon className="h-5 w-5 text-spotify-grey hover:text-white" />
                 </button>
                 <h2 className="text-2xl font-bold">Listening Insights</h2>
+            </div>
+
+            {/* Personality Card */}
+            <div className="bg-spotify-dark-grey rounded-lg p-6">
+                <h3 className="text-xl font-bold mb-4">Your Music Personality</h3>
+                <Suspense fallback={<LoadingSpinner />}>
+                    {personalityError ? (
+                        <div className="text-red-500 text-center p-4">
+                            Failed to load personality insights: {personalityError.message}
+                        </div>
+                    ) : personalityLoading ? (
+                        <LoadingSpinner />
+                    ) : personalityData ? (
+                        <PersonalityInsights data={personalityData} />
+                    ) : (
+                        <div className="text-center text-spotify-grey p-4">
+                            Not enough listening history yet.
+                        </div>
+                    )}
+                </Suspense>
             </div>
 
             {/* Heatmap Card */}

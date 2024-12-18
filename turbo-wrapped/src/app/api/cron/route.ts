@@ -95,10 +95,9 @@ export async function GET(request: Request) {
                 for (const item of data.items) {
                     const artistId = item.track.artists[0].id;
                     
-                    // Add this before the Promise.all
                     console.log(`Processing artist: ${item.track.artists[0].name} (${artistId})`);
 
-                    // Process artist location in parallel with other operations
+                    // Process artist location and fetch artist details in parallel
                     const [locationResult, artistResponse] = await Promise.all([
                         getOrCreateArtistLocation(artistId, item.track.artists[0].name),
                         fetch(
@@ -111,12 +110,19 @@ export async function GET(request: Request) {
                         )
                     ]);
 
+                    let genres: string[] = [];
+                    let artistPopularity: number | null = null;
+
                     if (!artistResponse.ok) {
                         console.error(`Failed to fetch artist details for ${item.track.artists[0].name} (${artistId}):`, 
                             artistResponse.status, await artistResponse.text());
+                    } else {
+                        const artistData = await artistResponse.json();
+                        genres = artistData.genres || [];
+                        artistPopularity = artistData.popularity;
+                        
+                        console.log(`Artist ${item.track.artists[0].name} popularity: ${artistPopularity}`);
                     }
-                    const artistData = await artistResponse.json();
-                    const genres = artistResponse.ok ? artistData.genres : [];
 
                     console.log(`Location result:`, locationResult);
                     console.log(`Artist genres for ${item.track.artists[0].name}:`, genres);
@@ -130,7 +136,8 @@ export async function GET(request: Request) {
                             }
                         },
                         update: {
-                            genres: genres // Update genres even if record exists
+                            genres: genres,
+                            artistPopularity: artistPopularity // Update popularity even if record exists
                         },
                         create: {
                             userId: user.id,
@@ -139,6 +146,7 @@ export async function GET(request: Request) {
                             artistName: item.track.artists[0].name,
                             albumName: item.track.album.name,
                             genres: genres,
+                            artistPopularity: artistPopularity,
                             playedAt: new Date(item.played_at),
                             duration: item.track.duration_ms,
                         }

@@ -47,6 +47,7 @@ model ListeningHistory {
   source     String   @default("spotify")
   createdAt  DateTime @default(now())
   user       User     @relation(fields: [userId], references: [id])
+  artistPopularity Int?
 
   @@unique([userId, trackId, playedAt])
   @@index([userId])
