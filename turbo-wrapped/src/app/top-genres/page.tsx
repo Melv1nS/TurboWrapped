@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import useSWR from 'swr';
 import BackButton from '../components/BackButton';
-import TagCloud from '../components/TagCloud';
+import TagCloud from '../components/charts/TagCloud';
 
 interface Genre {
   name: string;

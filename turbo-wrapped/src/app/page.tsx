@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import TrackingToggle from './components/TrackingToggle';
 import { useTrackingState } from './hooks/useTrackingState';
+import DeleteDataButton from './components/DeleteDataButton';
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -55,7 +56,9 @@ export default function Home() {
             {/* Move tracking toggle and info blurb to top */}
             <div className="flex flex-col md:flex-row gap-6 w-full max-w-4xl items-start">
               <div className="md:w-1/3">
-                <TrackingToggle />
+                <div className="bg-spotify-dark-elevated/50 p-4 rounded-lg">
+                  <TrackingToggle />
+                </div>
               </div>
               <div className="flex-1 text-gray-400 text-sm bg-spotify-dark-elevated/50 p-4 rounded-lg">
                 <p className="leading-relaxed">
@@ -63,6 +66,9 @@ export default function Home() {
                   This allows us to build a detailed picture of your music journey and generate 
                   more personalized insights over time. The more data we collect, the more 
                   interesting patterns and trends we can reveal about your listening habits.
+                </p>
+                <p className="mt-2 text-xs">
+                  Your data is stored securely and is never shared with third parties.
                 </p>
               </div>
             </div>
@@ -275,6 +281,22 @@ export default function Home() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Add Delete Data section at the bottom */}
+            <div className="w-full max-w-4xl mt-12 border-t border-gray-700 pt-8">
+              <div className="flex flex-col items-center gap-4">
+                <h2 className="text-2xl font-bold text-white">Data Management</h2>
+                <p className="text-gray-400 text-sm text-center max-w-2xl mb-4">
+                  You can delete all your stored listening history at any time. 
+                  This action is permanent and cannot be undone, but it won't affect your 
+                  tracking preferences. If tracking is enabled, new data will continue to 
+                  be collected after deletion.
+                </p>
+                <div className="w-full max-w-md">
+                  <DeleteDataButton />
                 </div>
               </div>
             </div>

@@ -101,7 +101,6 @@ export async function GET(request: Request) {
                     // Process artist location in parallel with other operations
                     const [locationResult, artistResponse] = await Promise.all([
                         getOrCreateArtistLocation(artistId, item.track.artists[0].name),
-                        // Fetch artist details to get genres
                         fetch(
                             `https://api.spotify.com/v1/artists/${artistId}`,
                             {
@@ -112,12 +111,15 @@ export async function GET(request: Request) {
                         )
                     ]);
 
+                    if (!artistResponse.ok) {
+                        console.error(`Failed to fetch artist details for ${item.track.artists[0].name} (${artistId}):`, 
+                            artistResponse.status, await artistResponse.text());
+                    }
                     const artistData = await artistResponse.json();
                     const genres = artistResponse.ok ? artistData.genres : [];
 
-                    // Add this after the Promise.all
                     console.log(`Location result:`, locationResult);
-                    console.log(`Artist genres:`, genres);
+                    console.log(`Artist genres for ${item.track.artists[0].name}:`, genres);
 
                     await prisma.listeningHistory.upsert({
                         where: {

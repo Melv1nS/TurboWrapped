@@ -194,22 +194,22 @@ export default function ListeningHistory() {
                             <table className="min-w-full">
                                 <thead>
                                     <tr className="bg-[#1DB954] text-black">
+                                        <th className="p-4 text-left cursor-pointer hover:text-gray-700" onClick={() => requestSort('playedAt')}>Played At</th>
                                         <th className="p-4 text-left cursor-pointer hover:text-gray-700" onClick={() => requestSort('trackName')}>Track Name</th>
                                         <th className="p-4 text-left cursor-pointer hover:text-gray-700" onClick={() => requestSort('artistName')}>Artist</th>
                                         <th className="p-4 text-left cursor-pointer hover:text-gray-700" onClick={() => requestSort('albumName')}>Album</th>
                                         <th className="p-4 text-left cursor-pointer hover:text-gray-700" onClick={() => requestSort('genres')}>Genres</th>
-                                        <th className="p-4 text-left cursor-pointer hover:text-gray-700" onClick={() => requestSort('playedAt')}>Played At</th>
                                         <th className="p-4 text-left cursor-pointer hover:text-gray-700" onClick={() => requestSort('duration')}>Duration</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {sortedHistory.map((item) => (
                                         <tr key={`${item.trackId}-${item.playedAt}`} className="hover:bg-opacity-70 transition-colors">
+                                            <td className="p-4">{formatDateTime(item.playedAt)}</td>
                                             <td className="p-4">{item.trackName}</td>
                                             <td className="p-4">{item.artistName}</td>
                                             <td className="p-4">{item.albumName}</td>
                                             <td className="p-4">{item.genres.join(', ')}</td>
-                                            <td className="p-4">{formatDateTime(item.playedAt)}</td>
                                             <td className="p-4">{formatDuration(item.duration)}</td>
                                         </tr>
                                     ))}

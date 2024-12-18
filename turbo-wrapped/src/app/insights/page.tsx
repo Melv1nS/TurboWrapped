@@ -14,7 +14,7 @@ const Heatmaps = lazy(() =>
 );
 
 const ArtistWorldMap = lazy(() => 
-    import('../components/ArtistWorldMap').then(mod => ({
+    import('../components/charts/ArtistWorldMap').then(mod => ({
         default: mod.ArtistWorldMap
     }))
 );
