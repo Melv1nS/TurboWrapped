@@ -283,6 +283,68 @@ export default function Home() {
                   </div>
                 </div>
               </div>
+
+              {/* Download History Card */}
+              <div 
+                className={`group bg-spotify-dark-elevated p-6 rounded-xl transition-all duration-300
+                          ${isEnabled 
+                            ? 'hover:bg-spotify-dark-highlight cursor-pointer transform hover:-translate-y-2 hover:shadow-xl hover:shadow-spotify-green/20' 
+                            : 'opacity-50 cursor-not-allowed'
+                          }`}
+                onClick={async () => {
+                  if (!isEnabled) return;
+                  try {
+                    const response = await fetch('/api/download-history');
+                    if (!response.ok) throw new Error('Download failed');
+                    
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `listening-history-${new Date().toISOString().split('T')[0]}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                  } catch (error) {
+                    console.error('Error downloading history:', error);
+                    // You might want to add a toast notification here
+                  }
+                }}
+              >
+                <div className="flex flex-col h-full">
+                  <div className="flex items-center gap-3 mb-4">
+                    <svg 
+                      className={`w-8 h-8 text-spotify-green transition-transform
+                                ${isEnabled ? 'group-hover:scale-110' : ''}`}
+                      fill="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                    </svg>
+                    <h2 className="text-2xl font-bold text-white">Download Data</h2>
+                  </div>
+                  <p className="text-gray-300 group-hover:text-white transition-colors">
+                    {isEnabled 
+                      ? "Export your listening history" 
+                      : "Enable tracking to download data"}
+                  </p>
+                  <div className={`mt-4 flex items-center text-spotify-green transition-opacity
+                                ${isEnabled ? 'opacity-0 group-hover:opacity-100' : 'opacity-50'}`}>
+                    <span>Download CSV</span>
+                    <svg 
+                      className={`w-4 h-4 ml-2 transition-transform
+                                ${isEnabled ? 'group-hover:translate-x-2' : ''}`}
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
             </div>
 
             {/* Add Delete Data section at the bottom */}
