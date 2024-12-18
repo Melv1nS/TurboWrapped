@@ -1,28 +1,45 @@
 import { LRUCache } from 'lru-cache'
+import { rateLimits, RateLimitConfig } from './rate-limit-config'
 
 type Options = {
   uniqueTokenPerInterval?: number
-  interval?: number
 }
 
-export default function rateLimit(options?: Options) {
+export default function rateLimit(endpoint: string, options?: Options) {
+  const config: RateLimitConfig = rateLimits[endpoint] || rateLimits.default;
+  
   const tokenCache = new LRUCache({
     max: options?.uniqueTokenPerInterval || 500,
-    ttl: options?.interval || 60000,
+    ttl: config.interval,
   })
 
   return {
-    check: (token: string, limit: number) => {
+    check: (token: string) => {
       const tokenCount = (tokenCache.get(token) as number[]) || [0]
       if (tokenCount[0] === 0) {
         tokenCache.set(token, [1])
-        return { success: true, remaining: limit - 1 }
+        return { 
+          success: true, 
+          remaining: config.limit - 1,
+          limit: config.limit,
+          resetIn: config.interval
+        }
       }
-      if (tokenCount[0] === limit) {
-        return { success: false, remaining: 0 }
+      if (tokenCount[0] === config.limit) {
+        return { 
+          success: false, 
+          remaining: 0,
+          limit: config.limit,
+          resetIn: config.interval
+        }
       }
       tokenCache.set(token, [tokenCount[0] + 1])
-      return { success: true, remaining: limit - tokenCount[0] - 1 }
+      return { 
+        success: true, 
+        remaining: config.limit - tokenCount[0] - 1,
+        limit: config.limit,
+        resetIn: config.interval
+      }
     },
   }
 }

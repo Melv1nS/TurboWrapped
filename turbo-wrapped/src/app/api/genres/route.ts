@@ -3,11 +3,8 @@ import { OPTIONS } from "../auth/[...nextauth]/route";
 import { NextResponse } from "next/server";
 import rateLimit from "@/app/lib/rate-limit";
 
-// Initialize rate limiter
-const limiter = rateLimit({
-    interval: 60 * 1000, // 1 minute
-    uniqueTokenPerInterval: 500, // Max number of unique tokens per interval
-});
+// Initialize rate limiter specifically for genres endpoint
+const limiter = rateLimit('genres');
 
 interface GenreCount {
     name: string;
@@ -16,10 +13,12 @@ interface GenreCount {
 
 export async function GET(request: Request) {
     try {
-        // Apply rate limiting before session check
+        // Get session and token for rate limiting
         const session = await getServerSession(OPTIONS);
         const token = session?.user?.email || request.headers.get('x-forwarded-for') || 'anonymous';
-        const { success, remaining } = await limiter.check(token, 30); // 30 requests per minute
+        
+        // Check rate limit (50 requests per minute as configured)
+        const { success, remaining, limit, resetIn } = await limiter.check(token);
         
         if (!success) {
             return NextResponse.json(
@@ -27,14 +26,16 @@ export async function GET(request: Request) {
                 { 
                     status: 429,
                     headers: {
-                        'Retry-After': '60',
-                        'X-RateLimit-Limit': '30',
-                        'X-RateLimit-Remaining': '0'
+                        'Retry-After': (resetIn / 1000).toString(),
+                        'X-RateLimit-Limit': limit.toString(),
+                        'X-RateLimit-Remaining': '0',
+                        'X-RateLimit-Reset': (Date.now() + resetIn).toString()
                     }
                 }
             );
         }
 
+        // Authorization checks
         if (!session?.accessToken) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
@@ -46,10 +47,11 @@ export async function GET(request: Request) {
             );
         }
 
+        // Validate time range parameter
         const { searchParams } = new URL(request.url);
         const timeRange = searchParams.get('time_range') || 'medium_term';
-
         const validTimeRanges = ['short_term', 'medium_term', 'long_term'];
+        
         if (!validTimeRanges.includes(timeRange)) {
             return NextResponse.json(
                 { error: "Invalid time range. Must be one of: short_term, medium_term, long_term" },
@@ -58,7 +60,7 @@ export async function GET(request: Request) {
         }
 
         try {
-            // Add caching headers to the request
+            // Fetch top tracks first
             const tracksResponse = await fetch(
                 `https://api.spotify.com/v1/me/top/tracks?limit=30&time_range=${timeRange}`,
                 {
@@ -77,14 +79,14 @@ export async function GET(request: Request) {
 
             const tracksData = await tracksResponse.json();
             
-            // Get unique artist IDs and batch the requests
+            // Get unique artist IDs
             const uniqueArtistIds = [...new Set(
                 tracksData.items.flatMap((track: any) => 
                     track.artists.map((artist: any) => artist.id)
                 )
             )];
 
-            // Batch artist requests in groups of 5 to avoid rate limits
+            // Batch artist requests in groups of 5
             const batchSize = 5;
             const artistGenres: { [key: string]: number } = {};
             
@@ -125,16 +127,19 @@ export async function GET(request: Request) {
                 .map(([name, count]): GenreCount => ({ name, count }))
                 .sort((a, b) => b.count - a.count);
 
-            // Create response with cache headers
-            const response = NextResponse.json(sortedGenres);
-            response.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=7200');
-            response.headers.set('Vary', 'Cookie, Authorization');
+            // Create response with all necessary headers
+            const apiResponse = NextResponse.json(sortedGenres);
+            
+            // Set cache control headers
+            apiResponse.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=7200');
+            apiResponse.headers.set('Vary', 'Cookie, Authorization');
             
             // Add rate limit headers
-            response.headers.set('X-RateLimit-Limit', '30');
-            response.headers.set('X-RateLimit-Remaining', remaining.toString());
+            apiResponse.headers.set('X-RateLimit-Limit', limit.toString());
+            apiResponse.headers.set('X-RateLimit-Remaining', remaining.toString());
+            apiResponse.headers.set('X-RateLimit-Reset', (Date.now() + resetIn).toString());
 
-            return response;
+            return apiResponse;
 
         } catch (error) {
             console.error('Error fetching genres:', error);

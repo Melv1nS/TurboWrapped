@@ -1,6 +1,10 @@
 import NextAuth from "next-auth";
 import SpotifyProvider from "next-auth/providers/spotify";
 import prisma from "@/app/lib/prisma";
+import rateLimit from "@/app/lib/rate-limit";
+
+// Initialize rate limiter for auth endpoint
+const limiter = rateLimit('auth');
 
 // Define all required scopes
 const REQUIRED_SCOPES = [
@@ -23,48 +27,68 @@ export const OPTIONS = {
     }),
   ],
   callbacks: {
-    async signIn({ user, account }) {
-      if (user.email && account) {
-        const dbUser = await prisma.user.upsert({
-          where: { email: user.email },
-          update: { name: user.name || '' },
-          create: {
-            email: user.email,
-            name: user.name || '',
-            trackingEnabled: false,
-          },
-        });
+    async signIn({ user, account, request }) {
+      try {
+        // Get IP address or fallback to a default
+        const ip = request?.headers?.['x-forwarded-for'] || 
+                  request?.socket?.remoteAddress || 
+                  'anonymous';
+        
+        // Check rate limit
+        const { success, remaining, limit, resetIn } = await limiter.check(ip);
+        
+        if (!success) {
+          throw new Error('TOO_MANY_REQUESTS');
+        }
 
-        if (account.provider === 'spotify') {
-          await prisma.account.upsert({
-            where: {
-              provider_providerAccountId: {
-                provider: account.provider,
-                providerAccountId: account.providerAccountId,
-              },
-            },
-            update: {
-              access_token: account.access_token,
-              refresh_token: account.refresh_token,
-              expires_at: account.expires_at,
-              token_type: account.token_type,
-              scope: account.scope,
-            },
+        if (user.email && account) {
+          const dbUser = await prisma.user.upsert({
+            where: { email: user.email },
+            update: { name: user.name || '' },
             create: {
-              userId: dbUser.id,
-              type: account.type,
-              provider: account.provider,
-              providerAccountId: account.providerAccountId,
-              access_token: account.access_token,
-              refresh_token: account.refresh_token,
-              expires_at: account.expires_at,
-              token_type: account.token_type,
-              scope: account.scope,
+              email: user.email,
+              name: user.name || '',
+              trackingEnabled: false,
             },
           });
+
+          if (account.provider === 'spotify') {
+            await prisma.account.upsert({
+              where: {
+                provider_providerAccountId: {
+                  provider: account.provider,
+                  providerAccountId: account.providerAccountId,
+                },
+              },
+              update: {
+                access_token: account.access_token,
+                refresh_token: account.refresh_token,
+                expires_at: account.expires_at,
+                token_type: account.token_type,
+                scope: account.scope,
+              },
+              create: {
+                userId: dbUser.id,
+                type: account.type,
+                provider: account.provider,
+                providerAccountId: account.providerAccountId,
+                access_token: account.access_token,
+                refresh_token: account.refresh_token,
+                expires_at: account.expires_at,
+                token_type: account.token_type,
+                scope: account.scope,
+              },
+            });
+          }
         }
+        return true;
+      } catch (error) {
+        if (error.message === 'TOO_MANY_REQUESTS') {
+          return false;
+        }
+        console.error('Sign in error:', error);
+        return false;
       }
-      return true;
     },
     async jwt({ token, account, user }) {
       if (account && user) {
@@ -88,6 +112,24 @@ export const OPTIONS = {
       session.accessToken = token.accessToken;
       return session;
     },
+  },
+  events: {
+    async signIn({ user, account, isNewUser }) {
+      // Log successful sign-ins for monitoring
+      console.log(`User ${user.email} signed in successfully`);
+    },
+    async signOut({ token }) {
+      // Log sign-outs for monitoring
+      console.log(`User signed out`);
+    },
+    async error(error) {
+      // Log authentication errors
+      console.error('Auth error:', error);
+    }
+  },
+  pages: {
+    error: '/auth/error', // Custom error page
+    signOut: '/', // Redirect to home after sign out
   },
 };
 
@@ -132,4 +174,20 @@ async function refreshAccessToken(token) {
 
 const handler = NextAuth(OPTIONS);
 
-export { handler as GET, handler as POST };
+// Export the handler with rate limit headers
+export async function GET(request: Request) {
+  const response = await handler(request);
+  
+  // Add rate limit headers if available from the limiter
+  const ip = request.headers.get('x-forwarded-for');
+  if (ip) {
+    const { success, remaining, limit, resetIn } = await limiter.check(ip);
+    response.headers.set('X-RateLimit-Remaining', remaining.toString());
+    response.headers.set('X-RateLimit-Limit', limit.toString());
+    response.headers.set('X-RateLimit-Reset', resetIn.toString());
+  }
+
+  return response;
+}
+
+export { handler as POST };

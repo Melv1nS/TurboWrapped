@@ -3,18 +3,17 @@ import { OPTIONS } from "../auth/[...nextauth]/route";
 import { NextResponse } from "next/server";
 import rateLimit from "@/app/lib/rate-limit";
 
-// Initialize rate limiter
-const limiter = rateLimit({
-    interval: 60 * 1000, // 1 minute
-    uniqueTokenPerInterval: 500, // Max number of unique tokens per interval
-});
+// Initialize rate limiter specifically for tracks endpoint
+const limiter = rateLimit('tracks');
 
 export async function GET(request: Request) {
     try {
-        // Apply rate limiting before session check
+        // Get session and token for rate limiting
         const session = await getServerSession(OPTIONS);
         const token = session?.user?.email || request.headers.get('x-forwarded-for') || 'anonymous';
-        const { success, remaining } = await limiter.check(token, 30); // 30 requests per minute
+        
+        // Check rate limit (50 requests per minute as configured)
+        const { success, remaining, limit, resetIn } = await limiter.check(token);
         
         if (!success) {
             return NextResponse.json(
@@ -22,15 +21,16 @@ export async function GET(request: Request) {
                 { 
                     status: 429,
                     headers: {
-                        'Retry-After': '60',
-                        'X-RateLimit-Limit': '30',
-                        'X-RateLimit-Remaining': '0'
+                        'Retry-After': (resetIn / 1000).toString(),
+                        'X-RateLimit-Limit': limit.toString(),
+                        'X-RateLimit-Remaining': '0',
+                        'X-RateLimit-Reset': (Date.now() + resetIn).toString()
                     }
                 }
             );
         }
 
-        // Existing authorization checks
+        // Authorization checks
         if (!session?.accessToken) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
@@ -42,10 +42,11 @@ export async function GET(request: Request) {
             );
         }
 
+        // Validate time range parameter
         const { searchParams } = new URL(request.url);
         const timeRange = searchParams.get('time_range') || 'medium_term';
-
         const validTimeRanges = ['short_term', 'medium_term', 'long_term'];
+        
         if (!validTimeRanges.includes(timeRange)) {
             return NextResponse.json(
                 { error: "Invalid time range. Must be one of: short_term, medium_term, long_term" },
@@ -54,6 +55,7 @@ export async function GET(request: Request) {
         }
 
         try {
+            // Fetch data from Spotify API
             const spotifyResponse = await fetch(
                 `https://api.spotify.com/v1/me/top/tracks?limit=20&time_range=${timeRange}`,
                 {
@@ -72,7 +74,7 @@ export async function GET(request: Request) {
 
             const data = await spotifyResponse.json();
 
-            // Filter and transform the response data
+            // Transform the response data
             const filteredData = {
                 items: data.items.map((track: any) => ({
                     id: track.id,
@@ -90,7 +92,7 @@ export async function GET(request: Request) {
                 }))
             };
 
-            // Create response with cache headers and rate limit information
+            // Create response with all necessary headers
             const apiResponse = NextResponse.json(filteredData);
             
             // Set cache control headers
@@ -98,8 +100,9 @@ export async function GET(request: Request) {
             apiResponse.headers.set('Vary', 'Cookie, Authorization');
             
             // Add rate limit headers
-            apiResponse.headers.set('X-RateLimit-Limit', '30');
+            apiResponse.headers.set('X-RateLimit-Limit', limit.toString());
             apiResponse.headers.set('X-RateLimit-Remaining', remaining.toString());
+            apiResponse.headers.set('X-RateLimit-Reset', (Date.now() + resetIn).toString());
 
             return apiResponse;
 

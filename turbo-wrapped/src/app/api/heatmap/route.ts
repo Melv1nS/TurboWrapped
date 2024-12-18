@@ -4,25 +4,19 @@ import { OPTIONS } from "../auth/[...nextauth]/route";
 import prisma from "@/app/lib/prisma";
 import rateLimit from "@/app/lib/rate-limit";
 
-// Initialize rate limiter
-const limiter = rateLimit({
-    interval: 60 * 1000, // 1 minute
-    uniqueTokenPerInterval: 500
-});
+// Initialize rate limiter for heatmap endpoint
+const limiter = rateLimit('heatmap');
 
-// New file for heatmap and basic stats
 export async function GET(request: Request) {
     try {
-        // Get session first for the email
+        // Get session and token for rate limiting
         const session = await getServerSession(OPTIONS);
-        
-        // Use email as token, fallback to IP address, then to 'anonymous'
         const token = session?.user?.email || 
             request.headers.get('x-forwarded-for') || 
             'anonymous';
         
-        // Check rate limit (30 requests per minute)
-        const { success, remaining } = await limiter.check(token, 30);
+        // Check rate limit (20 requests per minute as configured)
+        const { success, remaining, limit, resetIn } = await limiter.check(token);
         
         if (!success) {
             return NextResponse.json(
@@ -30,31 +24,38 @@ export async function GET(request: Request) {
                 { 
                     status: 429,
                     headers: {
-                        'Retry-After': '60',
-                        'X-RateLimit-Limit': '30',
-                        'X-RateLimit-Remaining': remaining.toString()
+                        'Retry-After': (resetIn / 1000).toString(),
+                        'X-RateLimit-Limit': limit.toString(),
+                        'X-RateLimit-Remaining': '0',
+                        'X-RateLimit-Reset': (Date.now() + resetIn).toString()
                     }
                 }
             );
         }
 
-        // Your existing authorization check
+        // Authorization check
         if (!session?.user?.email) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
         try {
+            // Get user
             const user = await prisma.user.findUnique({
                 where: { email: session.user.email }
             });
 
             if (!user) {
-                return NextResponse.json({ error: "User not found" }, { status: 404 });
+                return NextResponse.json(
+                    { error: "User not found" },
+                    { status: 404 }
+                );
             }
 
+            // Calculate date range
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
+            // Fetch listening history
             const listeningHistory = await prisma.listeningHistory.findMany({
                 where: { 
                     userId: user.id,
@@ -76,7 +77,7 @@ export async function GET(request: Request) {
             const durationData = Array(7).fill(0).map(() => Array(24).fill(0));
             const dailyPlays = Array(7).fill(false);
 
-            // Add error handling for date parsing
+            // Process listening history
             listeningHistory.forEach(entry => {
                 try {
                     const date = new Date(entry.playedAt);
@@ -98,57 +99,19 @@ export async function GET(request: Request) {
                 }
             });
 
-            // Calculate streak
-            const calculateStreak = (dailyPlaysData: boolean[]) => {
-                let currentStreak = 0;
-                let longestStreak = 0;
-                let currentStreakStart = null;
-                let longestStreakStart = null;
-                let longestStreakEnd = null;
+            // Calculate streak information
+            const streakInfo = calculateStreak(dailyPlays);
 
-                dailyPlaysData.forEach((hasPlays, index) => {
-                    if (hasPlays) {
-                        currentStreak++;
-                        if (currentStreakStart === null) {
-                            currentStreakStart = index;
-                        }
-                        if (currentStreak > longestStreak) {
-                            longestStreak = currentStreak;
-                            longestStreakStart = currentStreakStart;
-                            longestStreakEnd = index;
-                        }
-                    } else {
-                        currentStreak = 0;
-                        currentStreakStart = null;
-                    }
-                });
-
-                const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                return {
-                    count: longestStreak,
-                    startDay: longestStreakStart !== null ? days[longestStreakStart] : null,
-                    endDay: longestStreakEnd !== null ? days[longestStreakEnd] : null
-                };
-            };
-
-            // Calculate some additional stats
+            // Calculate additional stats
             const totalPlays = listeningHistory.length;
             const totalDuration = listeningHistory.reduce((sum, entry) => sum + entry.duration, 0);
-            
             const peakHour = heatmapData.flat().indexOf(Math.max(...heatmapData.flat())) % 24;
             const peakDay = heatmapData.findIndex(day => 
                 day.includes(Math.max(...heatmapData.flat()))
             );
 
-            const streakInfo = calculateStreak(dailyPlays);
-
-            // Create the peakListening object
-            const peakListening = {
-                hour: peakHour,
-                day: peakDay
-            };
-
-            return NextResponse.json({
+            // Create response with all data
+            const response = NextResponse.json({
                 heatmap: heatmapData,
                 duration: durationData,
                 timeRange: {
@@ -158,16 +121,39 @@ export async function GET(request: Request) {
                 stats: {
                     totalPlays,
                     totalDuration,
-                    peakListening,
+                    peakListening: {
+                        hour: peakHour,
+                        day: peakDay
+                    },
                     streak: streakInfo
                 }
             });
+
+            // Set cache headers (short TTL since data changes frequently)
+            response.headers.set('Cache-Control', 'private, max-age=300');
+            response.headers.set('Vary', 'Cookie, Authorization');
+            
+            // Add rate limit headers
+            response.headers.set('X-RateLimit-Limit', limit.toString());
+            response.headers.set('X-RateLimit-Remaining', remaining.toString());
+            response.headers.set('X-RateLimit-Reset', (Date.now() + resetIn).toString());
+
+            return response;
+
         } catch (error) {
             console.error('Error fetching listening patterns:', error);
-            return NextResponse.json(
-                { error: "Failed to fetch listening patterns", details: error.message },
+            
+            // Add rate limit headers even to error responses
+            const errorResponse = NextResponse.json(
+                { error: "Failed to fetch listening patterns" },
                 { status: 500 }
             );
+            
+            errorResponse.headers.set('X-RateLimit-Limit', limit.toString());
+            errorResponse.headers.set('X-RateLimit-Remaining', remaining.toString());
+            errorResponse.headers.set('X-RateLimit-Reset', (Date.now() + resetIn).toString());
+
+            return errorResponse;
         }
     } catch (error) {
         console.error('Error processing request:', error);

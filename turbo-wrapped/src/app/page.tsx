@@ -5,6 +5,7 @@ import Image from "next/image";
 import TrackingToggle from './components/TrackingToggle';
 import { useTrackingState } from './hooks/useTrackingState';
 import DeleteDataButton from './components/DeleteDataButton';
+import Link from 'next/link';
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -382,6 +383,17 @@ export default function Home() {
             >
               Connect with Spotify
             </button>
+
+            {/* Add privacy notice */}
+            <p className="text-sm text-gray-400">
+              By connecting, you agree to our{' '}
+              <Link 
+                href="/privacy-policy" 
+                className="text-spotify-green hover:underline"
+              >
+                Privacy Policy
+              </Link>
+            </p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
               <div className="text-center">
