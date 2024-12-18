@@ -2,6 +2,13 @@ import NextAuth from "next-auth";
 import SpotifyProvider from "next-auth/providers/spotify";
 import prisma from "@/app/lib/prisma";
 
+// Define all required scopes
+const REQUIRED_SCOPES = [
+    "user-read-email",     // Required for authentication
+    "user-top-read",       // Required for top artists, tracks, and genres
+    "user-read-recently-played"  // Required for listening history tracking
+].join(',');
+
 export const OPTIONS = {
   providers: [
     SpotifyProvider({
@@ -10,7 +17,7 @@ export const OPTIONS = {
       authorization: {
         url: "https://accounts.spotify.com/authorize",
         params: {
-          scope: "user-read-email,user-top-read,user-read-recently-played,user-read-currently-playing",
+          scope: REQUIRED_SCOPES,
         },
       },
     }),
