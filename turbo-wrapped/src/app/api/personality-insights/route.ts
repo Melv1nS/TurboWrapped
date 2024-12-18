@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import prisma from '@/app/lib/prisma';
+import rateLimit from '@/app/lib/rate-limit';
 
-export async function GET() {
+const limiter = rateLimit('insights');
+
+export async function GET(request: Request) {
     const session = await getServerSession();
     if (!session?.user?.email) {
         console.log("No session or email found");
@@ -10,6 +13,29 @@ export async function GET() {
     }
 
     try {
+        // Apply rate limiting
+        const identifier = session.user.email; // Use email as unique identifier
+        const { success, remaining, limit, resetIn } = await limiter.check(identifier);
+        
+        if (!success) {
+            return NextResponse.json(
+                { 
+                    error: 'Rate limit exceeded',
+                    limit,
+                    remaining,
+                    resetIn 
+                },
+                { 
+                    status: 429,
+                    headers: {
+                        'X-RateLimit-Limit': limit.toString(),
+                        'X-RateLimit-Remaining': remaining.toString(),
+                        'X-RateLimit-Reset': (Date.now() + resetIn).toString(),
+                    }
+                }
+            );
+        }
+
         // Get user first
         const user = await prisma.user.findUnique({
             where: { email: session.user.email }
