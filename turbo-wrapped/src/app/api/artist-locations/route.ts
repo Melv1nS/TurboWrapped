@@ -12,70 +12,57 @@ const limiter = rateLimit({
 });
 
 export async function GET(request: Request) {
+    const session = await getServerSession(OPTIONS);
+    if (!session?.user?.email) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     try {
-        const session = await getServerSession(OPTIONS);
-        
-        // Use email as token, fallback to IP address, then to 'anonymous'
-        const token = session?.user?.email || 
-            request.headers.get('x-forwarded-for') || 
-            'anonymous';
-        
-        // Check rate limit (30 requests per minute)
-        const { success, remaining } = await limiter.check(token, 30);
-        
-        if (!success) {
-            return NextResponse.json(
-                { error: "Too many requests. Please try again later." },
-                { 
-                    status: 429,
-                    headers: {
-                        'Retry-After': '60',
-                        'X-RateLimit-Limit': '30',
-                        'X-RateLimit-Remaining': remaining.toString()
-                    }
+        // Parse date parameters
+        const { searchParams } = new URL(request.url);
+        const startDate = searchParams.get('startDate');
+        const endDate = searchParams.get('endDate');
+
+        const user = await prisma.user.findUnique({
+            where: { email: session.user.email }
+        });
+
+        if (!user) {
+            return NextResponse.json({ error: "User not found" }, { status: 404 });
+        }
+
+        // First get the artists from the filtered listening history
+        const historyWhereClause = {
+            userId: user.id,
+            ...(startDate && endDate ? {
+                playedAt: {
+                    gte: new Date(startDate),
+                    lte: new Date(endDate)
                 }
-            );
-        }
+            } : {})
+        };
 
-        if (!session?.user?.email) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        const artists = await prisma.listeningHistory.findMany({
+            where: historyWhereClause,
+            select: { artistName: true },
+            distinct: ['artistName']
+        });
 
+        // Then get locations for these artists
         const locations = await prisma.artistLocation.findMany({
             where: {
-                latitude: { not: null },
-                longitude: { not: null }
+                artistName: {
+                    in: artists.map(a => a.artistName)
+                }
             }
         });
 
-        // Create response with data
-        const response = NextResponse.json({ locations });
-
-        // Add cache control headers
-        // Artist locations change less frequently, so we can cache longer
-        response.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=1800');
-        response.headers.set('Vary', 'Cookie, Authorization');
-        
-        // Add performance headers
-        response.headers.set('Timing-Allow-Origin', '*');
-        response.headers.set('X-Content-Type-Options', 'nosniff');
-        
-        // Add rate limit headers
-        response.headers.set('X-RateLimit-Limit', '30');
-        response.headers.set('X-RateLimit-Remaining', remaining.toString());
-
-        return response;
-
+        return NextResponse.json({ locations });
     } catch (error) {
         console.error('Error fetching artist locations:', error);
         return NextResponse.json(
             { error: "Failed to fetch artist locations" },
-            { 
-                status: 500,
-                headers: {
-                    'Cache-Control': 'no-store'
-                }
-            }
+            { status: 500 }
         );
     }
 }

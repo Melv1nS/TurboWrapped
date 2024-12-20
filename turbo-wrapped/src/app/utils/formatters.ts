@@ -17,3 +17,4 @@ export const formatDateTime = (dateString: string) => {
 export const formatNumber = (num: number) => {
     return new Intl.NumberFormat().format(num);
 };
+

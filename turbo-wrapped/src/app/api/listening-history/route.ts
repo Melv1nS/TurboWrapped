@@ -39,10 +39,12 @@ export async function GET(request: Request) {
         }
 
         try {
-            // Parse pagination parameters
+            // Parse parameters
             const { searchParams } = new URL(request.url);
             const page = parseInt(searchParams.get('page') || '1');
             const limit = parseInt(searchParams.get('limit') || '20');
+            const startDate = searchParams.get('startDate');
+            const endDate = searchParams.get('endDate');
 
             // Validate pagination parameters
             if (isNaN(page) || page < 1 || isNaN(limit) || limit < 1 || limit > 100) {
@@ -64,19 +66,30 @@ export async function GET(request: Request) {
                 );
             }
 
-            // Fetch data with pagination
+            // Create where clause with date range
+            const whereClause = {
+                userId: user.id,
+                ...(startDate && endDate ? {
+                    playedAt: {
+                        gte: new Date(startDate),
+                        lte: new Date(endDate)
+                    }
+                } : {})
+            };
+
+            // Fetch data with pagination and date range
             const [history, total, uniqueArtists] = await Promise.all([
                 prisma.listeningHistory.findMany({
-                    where: { userId: user.id },
+                    where: whereClause,
                     orderBy: { playedAt: 'desc' },
                     take: limit,
                     skip: (page - 1) * limit
                 }),
                 prisma.listeningHistory.count({
-                    where: { userId: user.id }
+                    where: whereClause
                 }),
                 prisma.listeningHistory.findMany({
-                    where: { userId: user.id },
+                    where: whereClause,
                     select: { artistName: true },
                     distinct: ['artistName']
                 })
@@ -85,16 +98,10 @@ export async function GET(request: Request) {
             // Create response with data and metadata
             const response = NextResponse.json({
                 history,
-                uniqueArtists: uniqueArtists.map(a => a.artistName),
-                stats: {
-                    totalTracks: total,
-                },
-                pagination: {
-                    total,
-                    pages: Math.ceil(total / limit),
-                    currentPage: page,
-                    limit
-                }
+                total,
+                pages: Math.ceil(total / limit),
+                currentPage: page,
+                uniqueArtists: uniqueArtists.map(a => a.artistName)
             });
 
             // Set cache headers

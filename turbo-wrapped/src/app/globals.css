@@ -132,3 +132,47 @@ body {
 .animate-float {
   animation: float 6s ease-in-out infinite;
 }
+
+.react-datepicker {
+    @apply bg-spotify-dark-grey border border-spotify-grey/20 !important;
+}
+
+.react-datepicker__header {
+    @apply bg-[#181818] border-spotify-grey/20 !important;
+}
+
+.react-datepicker__current-month, 
+.react-datepicker__day-name {
+    @apply text-white !important;
+}
+
+.react-datepicker__day {
+    @apply text-white hover:bg-spotify-green hover:text-black !important;
+}
+
+.react-datepicker__day--selected {
+    @apply bg-spotify-green text-black !important;
+}
+
+.react-datepicker__day--disabled {
+    @apply text-spotify-grey/50 hover:bg-transparent hover:text-spotify-grey/50 !important;
+}
+
+.react-datepicker__navigation-icon::before {
+    @apply border-spotify-grey !important;
+}
+
+.react-datepicker__year-dropdown,
+.react-datepicker__month-dropdown {
+    @apply bg-[#181818] border-spotify-grey/20 !important;
+}
+
+.react-datepicker__year-option,
+.react-datepicker__month-option {
+    @apply text-white hover:bg-spotify-green hover:text-black !important;
+}
+
+.react-datepicker__input-container input {
+    @apply w-full bg-[#181818] text-white px-4 py-2 rounded-lg border border-spotify-grey/20 
+    focus:outline-none focus:border-spotify-green hover:border-spotify-grey/40 transition-colors !important;
+}

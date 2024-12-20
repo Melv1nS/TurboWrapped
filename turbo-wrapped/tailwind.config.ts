@@ -17,6 +17,13 @@ export default {
           'dark-grey': '#282828',
           'light-grey': '#404040',
         },
+        'spotify-green': '#1DB954',
+        'spotify-black': '#191414',
+        'spotify-white': '#FFFFFF',
+        'spotify-grey': '#B3B3B3',
+        'spotify-dark-grey': '#282828',
+        'spotify-darker-grey': '#181818', // Add this line
+        'spotify-light-grey': '#404040',
       },
     },
   },
